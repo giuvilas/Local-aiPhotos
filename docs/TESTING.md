@@ -257,7 +257,7 @@ works because the app is one classic script.
 This caught a real bug the logic tests had missed: after a removal the Library cleared its
 tiles by looking up each one's photo in the *new*, shorter list and read past the end. Tiles
 now carry their own id (see
-[FINDINGS.md](FINDINGS.md#17-things-outlive-the-list-that-created-them)).
+[FINDINGS.md](FINDINGS.md#19-things-outlive-the-list-that-created-them)).
 
 [↑ Back to Index](#index)
 

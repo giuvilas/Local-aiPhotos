@@ -556,7 +556,7 @@ starting up**, and a deadline has to cover the worse of the two.
 
 ---
 
-## 16. Index size
+## 17. Index size
 
 Measured on real photos, then projected:
 
@@ -573,7 +573,7 @@ also the only part that can be rebuilt without model calls, which is why backups
 
 ---
 
-## 16. Hiding a photo is not deleting it
+## 18. Hiding a photo is not deleting it
 
 Removing a photo from the Library looks like the existing soft-delete: a record already has a
 `deleted` flag, set by **Mark missing**. The obvious implementation reuses it, and it would be
@@ -602,7 +602,7 @@ So removal uses a separate `hidden` flag:
 
 ---
 
-## 17. Things outlive the list that created them
+## 19. Things outlive the list that created them
 
 A virtualised grid keeps a map from list position to the DOM tile showing it. The Library's
 first version cleared tiles by looking up each tile's position in the photo list to find which
