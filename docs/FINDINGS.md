@@ -526,6 +526,36 @@ back, and `memory is unchanged by a failed write` fails with `10 != 9`.
 
 ---
 
+## 16. A deadline sized from a warm measurement fires on a sleeping drive
+
+Deadlines here are derived from measured storage speed rather than guessed, which fixed one
+problem and created its mirror image. Opening the index failed with:
+
+```
+opening the index did not finish within 26s [stuck at: Opening .photoindex/…]
+```
+
+The arithmetic: 162 ms measured per operation, times cost 4, times factor 40, is 26 seconds.
+The 162 ms was real. It was measured while the drive was **awake**. The same share needs
+about **24 seconds to answer its first request when the drives are asleep**, which no
+throughput measurement taken while it was spinning can see. So the deadline sat barely above
+the spin-up cost and the first operation after idle failed on a drive that was merely asleep.
+
+`wakeStorage()` exists for precisely this, and cannot help: it touches `config.json`, so it
+needs `IDX.dir`, which only exists once the index is already open. The spin-up is therefore
+unavoidably inside the operation being bounded.
+
+The fix is an explicit allowance rather than a bigger number everywhere. While storage has
+been quiet longer than `io.idleMs`, deadlines carry `io.spinUpMs` on top of the measured
+cost; once it is answering, `S.storage.at` is fresh and deadlines tighten again. For this
+share that turns 26 s into 71 s for a cold first open, while a warm failure is still
+reported in about 26.
+
+The general shape: **a measurement of a system at work does not describe the same system
+starting up**, and a deadline has to cover the worse of the two.
+
+---
+
 ## 16. Index size
 
 Measured on real photos, then projected:

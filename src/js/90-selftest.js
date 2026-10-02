@@ -1091,7 +1091,27 @@ async function selfTest(){
         S.storage.openMs = null; S.storage.readMs = null; S.storage.listMs = null;
         eq("unmeasured storage falls back to the floor",
            ioDeadline(1), Math.min(S.io.deadlineCapMs, S.io.deadlineFloorMs));
-        S.storage.openMs = 24000;                    // the measured sleeping NAS
+        /* The allowance for a drive that may need to spin up. Without it, a
+         warm measurement produced a 26s deadline on a share needing 24s just
+         to answer, and opening the index failed on a sleeping drive. */
+      S.storage.openMs = 162;                      // measured while awake
+      S.storage.at = Date.now() - (S.io.idleMs + 1000);   // and quiet since
+      ok("a quiet drive gets a spin-up allowance",
+         ioDeadline(4) >= S.io.spinUpMs + 8000, ioDeadline(4) + " ms");
+      ok("which comfortably exceeds the measured 24s spin-up",
+         ioDeadline(4) > 24000, ioDeadline(4) + " ms");
+      S.storage.at = Date.now();                   // answering right now
+      const warm = ioDeadline(4);
+      ok("an answering drive gets no allowance, so errors stay prompt",
+         warm < S.io.spinUpMs, warm + " ms");
+      S.storage.at = 0;
+      ok("never-measured storage also gets the allowance",
+         ioDeadline(1) >= S.io.spinUpMs, ioDeadline(1) + " ms");
+      ok("and the cap is still never exceeded",
+         ioDeadline(1000) <= S.io.deadlineCapMs, ioDeadline(1000) + " ms");
+
+      S.storage.openMs = 24000;                    // the measured sleeping NAS
+      S.storage.at = Date.now();
         ok("a slow share gets a longer deadline than a fast one",
            ioDeadline(1) > S.io.deadlineFloorMs, ioDeadline(1) + " ms");
         ok("but never an unbounded one", ioDeadline(100) <= S.io.deadlineCapMs);

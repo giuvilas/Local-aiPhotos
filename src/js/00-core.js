@@ -55,8 +55,13 @@ const S = {
   /* deadlineFactor multiplies the MEASURED cost of a round trip; cap is the
      ceiling, and the floor stops a fast local disk producing deadlines so
      tight that a momentary stall looks like a failure. */
+  /* spinUpMs is an allowance, not a measurement: a sleeping share needs about
+     24 seconds just to answer its first request, and a throughput figure taken
+     while it was awake cannot see that. Added to the deadline whenever storage
+     has been idle longer than idleMs, because that first operation may be the
+     one paying for the spin-up. */
   io: { retries:3, retryMs:400, deadlineFactor:40, deadlineFloorMs:8000,
-        deadlineCapMs:180000 },
+        deadlineCapMs:180000, spinUpMs:45000, idleMs:60000 },
   storage: { openMs:null, readMs:null, listMs:null, at:0, listTimedOut:false },
   /* threshold is cosine similarity between unit vectors: higher splits one
      person into several groups, lower merges different people together. */
@@ -488,7 +493,14 @@ function ioDeadline(units, floorMs){
      produced a 30-second backup deadline on a share needing 24s just to wake. */
   const want = unit == null ? floor
     : Math.max(floor, unit * (units || 1) * S.io.deadlineFactor);
-  return Math.min(S.io.deadlineCapMs, want);
+  /* Sizing a deadline from a WARM measurement is the other half of that same
+     mistake. 162ms measured awake times cost 4 times factor 40 is 26 seconds --
+     barely above the 24 seconds a sleeping drive needs before it answers at all,
+     so the first operation after idle failed on a drive that was merely asleep.
+     The allowance applies only while storage has been quiet; once it is
+     answering, S.storage.at is fresh and deadlines tighten again. */
+  const quiet = !S.storage.at || (Date.now() - S.storage.at) > S.io.idleMs;
+  return Math.min(S.io.deadlineCapMs, want + (quiet ? S.io.spinUpMs : 0));
 }
 
 function describeStorage(){
