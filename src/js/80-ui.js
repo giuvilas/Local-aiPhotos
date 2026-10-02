@@ -103,7 +103,7 @@ $("#btnThink").onclick = async () => {
       st[mode === "off" && !leaked ? "ok" : "warn"](
         tok + " output tokens, " + secs.toFixed(1) + "s, reasoning "
         + (leaked ? "present" : "absent"));
-    } catch (e){ st.err(errText(e)); }
+    } catch (e){ st.err(humanError(e)); }
   }
   const on = runs.find(r => r.mode === "on"), off = runs.find(r => r.mode === "off");
   if (on && off && on.tok && off.tok)
@@ -125,7 +125,7 @@ async function useDirectory(handle){
     let p = await handle.queryPermission({ mode:"readwrite" });
     if (p !== "granted") p = await handle.requestPermission({ mode:"readwrite" });
     p === "granted" ? st.ok("granted") : st.warn(p);
-  } catch (e){ st.warn(errText(e)); }
+  } catch (e){ st.warn(humanError(e)); }
   try { await idbSet("lastDir", handle); $("#btnReconnect").disabled = false; } catch {}
   renderIndexWhere();
   /* Measure this storage once, on connect, and say what was found. Every
@@ -138,12 +138,36 @@ async function useDirectory(handle){
     const unit = storageUnitMs();
     (unit != null && unit > 3000 ? sp.warn : sp.ok)(describeStorage());
     renderIndexWhere();
-  } catch (e){ sp.warn(errText(e)); }
+  } catch (e){ sp.warn(humanError(e)); }
   await fillScopes();
   IDX.loaded = false;
   await refreshPlan();
+  refreshActiveTab();
+}
+/* Says, in one place, where the index is RIGHT NOW. The browser only hands over folder
+   names, never full paths, so this is the name of the folder that holds .photoindex. */
+async function renderIndexNow(){
+  const box = $("#idxNow");
+  if (!box) return;
+  box.textContent = "";
+  let parent = null;
+  try { parent = await indexParent(); } catch {}
+  if (!parent){
+    box.append(el("b", null, "No index location yet. "),
+      document.createTextNode(S.indexMode === "custom"
+        ? "Choose where to save the DB, or reconnect the index folder."
+        : "Choose a photo folder; the index will sit inside it."));
+    return;
+  }
+  const custom = S.indexMode === "custom";
+  box.append(el("b", null, "Index right now: "), document.createTextNode(parent.name + "/.photoindex"));
+  box.append(el("div", "hint", (custom ? "A folder you chose for the index" : "Beside the photos, inside the connected photo folder '"
+    + (S.dirHandle ? S.dirHandle.name : "?") + "'")
+    + (IDX.records.size ? " \u00b7 " + IDX.records.size + " photos recorded" : "")
+    + ". Chrome shares folder names, not full paths: to find it in Finder, search for the name above, then press Cmd+Shift+. to show hidden folders."));
 }
 function renderIndexWhere(){
+  renderIndexNow();
   const n = $("#indexWhere");
   const where = S.indexMode === "custom"
     ? (S.indexDirHandle ? S.indexDirHandle.name : null)
@@ -167,6 +191,7 @@ $("#sIndexMode").onchange = async () => {
   }
   IDX.loaded = false;
   await refreshPlan();
+  refreshActiveTab();
 };
 $("#sOrder").onchange = () => { S.scanOrder = $("#sOrder").value; saveSettings();
   if (S.plan) renderPlan(S.plan); };
@@ -182,6 +207,105 @@ async function fillScopes(){
   if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
   else { S.scanScope = ""; sel.value = ""; }
 }
+/* ---- folders to leave out ---- */
+async function exclHandle(path){
+  let h = S.dirHandle;
+  for (const part of path.split("/").filter(Boolean)) h = await h.getDirectoryHandle(part);
+  return h;
+}
+async function exclChildren(path){
+  const out = [];
+  const h = path ? await exclHandle(path) : S.dirHandle;
+  for await (const [name, ent] of h.entries()){
+    if (ent.kind !== "directory" || SKIP_DIR.has(name) || name.startsWith(".")) continue;
+    out.push(name);
+  }
+  return out.sort((a, b) => a.localeCompare(b));
+}
+function exclSummary(){
+  const n = S.scanExclude.length;
+  $("#exclSummary").textContent = n
+    ? n + " folder" + (n === 1 ? "" : "s") + " left out: " + S.scanExclude.map(x => x.replace(/\/$/, "")).join(", ")
+    : "Every folder is scanned.";
+}
+let exclTimer = null;
+function exclChanged(){
+  S.scanExclude.sort();
+  saveSettings(); exclSummary();
+  clearTimeout(exclTimer);
+  exclTimer = setTimeout(() => refreshPlan(), 600);   // several ticks in a row make one refresh
+}
+function exclSet(path, include){
+  const p = path + "/";
+  if (include){
+    S.scanExclude = S.scanExclude.filter(e => e !== p && !e.startsWith(p));
+  } else if (!isExcludedPath(p)){
+    S.scanExclude = S.scanExclude.filter(e => !e.startsWith(p));   // the parent now covers them
+    S.scanExclude.push(p);
+  }
+  exclChanged();
+}
+async function exclNode(host, path, name, parentOff){
+  const full = path ? path + "/" + name : name;
+  const off = isExcludedPath(full + "/");
+  const wrap = el("div");
+  const row = el("div", "exclRow" + (off ? " off" : ""));
+  const tw = el("button", "tw", "\u25B8"); tw.title = "Look inside";
+  const cb = document.createElement("input"); cb.type = "checkbox";
+  cb.checked = !off; cb.disabled = parentOff; cb.id = "excl-" + full;
+  cb.title = parentOff ? "Its parent folder is left out" : "";
+  const lab = el("label", null, name); lab.htmlFor = cb.id;
+  row.append(tw, cb, lab); wrap.append(row);
+  const kids = el("div", "exclKids"); kids.hidden = true; wrap.append(kids);
+  let loaded = false;
+  const open = async () => {
+    kids.hidden = !kids.hidden;
+    tw.textContent = kids.hidden ? "\u25B8" : "\u25BE";
+    if (kids.hidden || loaded) return;
+    loaded = true;
+    kids.textContent = "Reading\u2026";
+    try {
+      const names = await exclChildren(full);
+      kids.textContent = "";
+      if (!names.length) kids.append(el("div", "hint", "No subfolders."));
+      for (const n of names) kids.append(await exclNode(kids, full, n, !cb.checked));
+    } catch (e){ kids.textContent = humanError(e); }
+  };
+  tw.onclick = open;
+  cb.onchange = () => {
+    exclSet(full, cb.checked);
+    row.classList.toggle("off", !cb.checked);
+    for (const c of kids.querySelectorAll("input[type=checkbox]")){
+      c.disabled = !cb.checked;
+      c.checked = !isExcludedPath(c.id.slice(5) + "/");
+      c.closest(".exclRow").classList.toggle("off", !c.checked);
+    }
+  };
+  return wrap;
+}
+async function exclRender(){
+  const host = $("#exclTree"); host.textContent = "";
+  if (!S.dirHandle){ host.append(el("div", "hint", "Choose or reconnect a folder first.")); return; }
+  try {
+    for (const n of await exclChildren("")) host.append(await exclNode(host, "", n, false));
+    if (!host.firstChild) host.append(el("div", "hint", "This folder has no subfolders."));
+  } catch (e){ host.textContent = humanError(e); }
+}
+$("#btnExcl").onclick = async () => {
+  const p = $("#exclPanel");
+  p.hidden = !p.hidden;
+  if (!p.hidden) await exclRender();
+};
+$("#exclAll").onclick = () => { S.scanExclude = []; exclChanged(); exclRender(); };
+/* Deselect all leaves out every folder, so a few can then be ticked back in. Photos sitting
+   directly in the library root belong to no folder and are still scanned. */
+$("#exclNone").onclick = async () => {
+  if (!S.dirHandle){ toast("Choose or reconnect a folder first."); return; }
+  try { S.scanExclude = (await exclChildren("")).map(n => n + "/"); } catch (e){ toast(humanError(e)); return; }
+  exclChanged(); exclRender();
+};
+exclSummary();
+
 $("#sScope").onchange = async () => {
   S.scanScope = $("#sScope").value;
   saveSettings();
@@ -195,7 +319,7 @@ $("#btnIndexDir").onclick = async () => {
   catch (e){
     if (e.name === "AbortError") return;
     if (isPickerStuck(e)){ offerPickerReset(); return; }
-    toast(errText(e));
+    toast(humanError(e));
     return;
   }
   if (!h) return;
@@ -215,7 +339,7 @@ $("#btnPick").onclick = async () => {
     if (e.name === "AbortError") return;
     if (isPickerStuck(e)){ offerPickerReset(); return; }
     renderChecks($("#fsOut"), [{ status:"err", title:"Could not open folder",
-      detail:errText(e) }]);
+      detail:humanError(e) }]);
     return;
   }
   if (h) await useDirectory(h);
@@ -248,13 +372,13 @@ $("#btnWriteTest").onclick = async () => {
     st.ok("append + seek to end works");
     st = step(host, "Read the folder"); await st.paint();
     const { files, counts } = await walk(S.dirHandle, n => st.note(n + " images so far…"));
-    st.ok(files.length + " scannable images · " + counts.raw + " RAW, " + counts.video + " video, "
+    st.ok(files.length + " scannable images · " + counts.rawPaired + " RAW beside a JPEG, " + counts.video + " video, "
       + counts.vector + " vector skipped · " + fmtDur((performance.now()-t0)/1000));
     checksBox(host).append(checkRow({ status:"ok", title:"Index is writable",
       detail:"Open the Scan tab to see the plan." }));
   } catch (e){
     checksBox(host).append(checkRow({ status:"err", title:"Write test failed",
-      detail:errText(e) }));
+      detail:humanError(e) }));
   }
   btn.disabled = false; btn.textContent = "Test write to .photoindex/";
 };
@@ -289,22 +413,46 @@ async function refreshPlan(){
   planAbort = new AbortController();
   const sig = planAbort.signal;
   resetChecks(host);
-  const st = step(host, "Building plan");
+  const custom = S.indexMode === "custom";
+  const idxName = custom ? (S.indexDirHandle ? S.indexDirHandle.name : "(not connected)") : S.dirHandle.name;
+  const where = idxName + "/.photoindex" + (custom ? "  \u2014 the index folder you chose" : "  \u2014 beside the photos");
+  checksBox(host).append(Object.assign(el("div","hint"), { textContent:
+    "Checking photos in '" + S.dirHandle.name + (S.scanExclude.length ? "' (" + S.scanExclude.length + " folders left out)" : "'")
+    + (S.scanScope ? ", scope " + S.scanScope : "") + " against the index in " + where
+    + ". This only reads: nothing is scanned, sent to a model or changed until you press a scan button." }));
+  let st = step(host, "Opening the index");
   try {
     if (!S.models.length && !$("#mock").checked){
-      await st.note("Detecting models…");
+      await st.note("Detecting models\u2026");
       await autoConnect();
     }
+    if (custom && !S.indexDirHandle && !await ensureIndexConnected())
+      throw new Error("Your index folder is not connected. Chrome drops folder access when the page reloads: "
+        + "press \u201cChoose where to save the DB\u2026\u201d in Settings and pick it again, or reconnect it from there.");
     await ensureIndex(null, { write:false });
-    await st.note("Waking the drive…");
+    await st.note("Waking the drive\u2026");
     await wakeStorage(m => st.note(m));
+    st.ok(((await indexParent()).name) + "/.photoindex" + (custom ? "  \u2014 the index folder you chose" : "  \u2014 beside the photos"));
     if (!IDX.loaded){
-      await loadRecords((pct, n) => st.note("Loading index… " + pct + "% (" + n + " records)"));
+      st = step(host, "Loading what is already in the index");
+      await loadRecords((pct, n) => st.note("Reading records\u2026 " + pct + "% (" + n + " so far)"));
       await loadVectors();
       await loadCheckpoint();
       if (GEO.state === "none" && await geoCached()) { /* place names ready */ }
+      st.ok(IDX.records.size + " records, one per photo scanned before");
     }
-    const p = await buildPlan(m => st.note(m), sig);
+    st = step(host, "Listing the photos in the folder");
+    const t0 = performance.now();
+    const p = await buildPlan(m => {
+      if (/^Walking/.test(m)) st.note(m.replace(/^Walking [^:]*: /, "Looking through the folder and its subfolders: ") + " found so far\u2026");
+      else if (/^Reading file details/.test(m)) st.note(m.replace("Reading file details: ", "Reading each file's size and date: "));
+      else st.note(m);
+    }, sig);
+    st.ok(p.total + " photos found in " + fmtDur((performance.now() - t0) / 1000)
+      + (p.counts.skippedDirs ? " (" + p.counts.skippedDirs + " hidden folders skipped)" : "")
+      + (p.counts.excludedDirs ? " (" + p.counts.excludedDirs + " folders left out by you)" : ""));
+    st = step(host, "Matching them to the index");
+    await st.paint();
     if (p.moved.length){
       const n = await applyMoves(p.moved);
       st.note(n + " file(s) re-linked without re-scanning…");
@@ -313,7 +461,9 @@ async function refreshPlan(){
     rebuildDerived();
     S.planStale = false;
     await ensureFaceNames();        // so names are searchable without opening People
-    st.ok(p.total + " images · " + IDX.records.size + " records");
+    st.ok(p.new.length + " new, " + p.ok.length + " already known"
+      + (p.moved.length ? ", " + p.moved.length + " moved" : "")
+      + (p.missing.length ? ", " + p.missing.length + " in the index but no longer in the folder" : ""));
     /* This used to say "everything will look new -- use a separate index per
        library", which was true only before photos were matched by content.
        They are now, so adding a second folder to one index is a supported
@@ -329,7 +479,7 @@ async function refreshPlan(){
     renderPlan(p);
   } catch (e){
     if (e.name === "AbortError") return;
-    st.err(errText(e));
+    st.err(humanError(e));
     /* A failed refresh must invalidate the plan, not leave live buttons
        pointing at dead file handles. */
     S.planStale = true;
@@ -341,7 +491,13 @@ function renderPlan(p){
   const host = $("#planBox");
   const box = el("div");
   const stat = el("div","stat");
-  const cell = (n, label) => { const d = el("div");
+  const TIPS = { "new":"Not in the index yet: a scan would read these.",
+    "changed":"The file was edited or replaced since it was scanned.",
+    "stale":"Scanned with an older schema, prompt or model than the current one.",
+    "failed":"A previous scan of these did not work. Retry failed tries them again.",
+    "missing":"In the index but not found in this folder (moved elsewhere, deleted, or another folder is connected).",
+    "up to date":"Already in the index and unchanged: nothing to do." };
+  const cell = (n, label) => { const d = el("div"); if (TIPS[label]) d.title = TIPS[label];
     d.append(el("b", null, String(n))); d.append(el("span", null, label)); return d; };
   stat.append(cell(p.total, p.scope ? "images in scope" : "images"));
   stat.append(cell(p.new.length, "new"));
@@ -351,13 +507,18 @@ function renderPlan(p){
   stat.append(cell(p.missing.length, "missing"));
   stat.append(cell(p.ok.length, "up to date"));
   box.append(stat);
+  box.append(Object.assign(el("div","hint"), { textContent:
+    "Counts: new = not scanned yet · changed = edited since scanned · stale = scanned with an older model or prompt · "
+    + "failed = a scan did not work · missing = in the index, not in this folder · up to date = nothing to do. "
+    + "Hover a number for details." }));
   const c = p.counts;
   const bits = [];
-  if (c.raw) bits.push(c.raw + " RAW counted, skipped");
+  if (c.rawPaired) bits.push(c.rawPaired + " RAW beside a JPEG, not scanned twice");
   if (c.video) bits.push(c.video + " video skipped");
   if (c.vector) bits.push(c.vector + " vector/PDF skipped");
   if (p.unreadable.length) bits.push(p.unreadable.length + " unreadable");
   if (c.skippedDirs) bits.push(c.skippedDirs + " hidden folders skipped");
+  if (c.excludedDirs) bits.push(c.excludedDirs + " folder" + (c.excludedDirs === 1 ? "" : "s") + " left out by you");
   bits.push(p.scope ? ("scope: " + p.scope + " — index holds " + p.indexTotal
     + " photos from the whole library") : "scope: whole library");
   if (RUN.vecError)
@@ -596,7 +757,7 @@ $("#btnRetry").onclick = () => { const p = planOrRefuse(); if (!p) return;
   runScan(p.failed, "retry-failed"); };
 $("#btnMissing").onclick = async () => {
   try { const n = await markMissing(S.plan); toast(n + " records marked missing."); await refreshPlan(); }
-  catch (e){ toast(errText(e)); }
+  catch (e){ toast(humanError(e)); }
 };
 $("#btnCompact").onclick = async () => {
   if (!(await ensureIndexConnected()) || !(await ensureConnected("compaction"))) return;
@@ -604,7 +765,7 @@ $("#btnCompact").onclick = async () => {
   try { await ensureIndex(); const r = await compactRecords();
     toast("Compacted records.jsonl: " + r.before + " lines to " + r.after + ".");
     rebuildDerived(); await refreshPlan(); }
-  catch (e){ toast(errText(e)); }
+  catch (e){ toast(humanError(e)); }
 };
 $("#btnThumbs").onclick = async () => {
   if (!(await ensureIndexConnected()) || !(await ensureConnected("the rebuild"))) return;
@@ -615,7 +776,7 @@ $("#btnThumbs").onclick = async () => {
   let p;
   try {
     p = await planThumbnails(async m => { await st.note(m); });
-  } catch (e){ st.err(errText(e)); toast(errText(e)); return; }
+  } catch (e){ st.err(humanError(e)); toast(humanError(e)); return; }
 
   if (!p.missing){
     st.ok(p.have + " thumbnails for " + p.total + " photos — none are missing."
@@ -645,7 +806,7 @@ $("#btnThumbs").onclick = async () => {
     if (p.unresolved.length) parts.push(p.unresolved.length + " await another folder");
     (r.failed || r.stopped ? st.warn : st.ok)(parts.join(", ") + ".");
     toast(r.built + " thumbnails rebuilt.");
-  } catch (e){ st.err(errText(e)); toast(errText(e)); }
+  } catch (e){ st.err(humanError(e)); toast(humanError(e)); }
 };
 
 $("#btnPause").onclick = () => {
@@ -659,6 +820,43 @@ $("#btnStop").onclick = () => {
   toast("Stopping… progress is saved and resumable.");
 };
 
+/* ---- move the index ---- */
+$("#btnIndexMove").onclick = async () => {
+  if (RUN.active){ toast("Wait for the scan to finish before moving the index."); return; }
+  if (!(await ensureIndexConnected()) || !(await ensureConnected("the move"))) return;
+  let dest;
+  try { await ensureIndex(null, { write:false }); dest = await pickDirectory(); }
+  catch (e){
+    if (e.name === "AbortError") return;
+    if (isPickerStuck(e)){ offerPickerReset(); return; }
+    toast(humanError(e)); return;
+  }
+  const host = $("#fsOut"); resetChecks(host);
+  let cur = null;
+  try { cur = await indexParent(); } catch {}
+  try { if (cur && await cur.isSameEntry(dest)){ toast("The index is already in " + dest.name + "."); return; } } catch {}
+  const rec = IDX.records.size;
+  if (!confirm("Move the index to '" + dest.name + "/.photoindex'?\n\n"
+      + "From: " + (cur ? cur.name : "?") + "/.photoindex  (" + rec + " photos recorded)\n"
+      + "To:   " + dest.name + "/.photoindex\n\n"
+      + "The index is copied, checked, and only then switched over. The old copy is left where it is, "
+      + "so nothing is lost; delete it yourself once you are happy. Your photos are not touched.\n\n"
+      + "If '" + dest.name + "' is not the folder you meant (the macOS picker returns a highlighted "
+      + "subfolder), press Cancel and choose again.")) return;
+  const btn = $("#btnIndexMove"); btn.disabled = true;
+  const st = step(host, "Moving the index to " + dest.name);
+  try {
+    const r = await withLibraryMaintenance(() => moveIndexTo(dest, m => st.note(m), { thumbs:true }));
+    st.ok(r.records + " photos recorded, " + (r.bytes / 1048576).toFixed(1) + " MB of index files copied. "
+      + "The old copy in " + (cur ? cur.name : "the old folder") + " is untouched.");
+    renderIndexWhere();
+    toast("Index moved to " + dest.name + "/.photoindex");
+    await refreshPlan();
+  } catch (e){
+    st.err(humanError(e) + " Nothing was switched: the index is still where it was.");
+  }
+  btn.disabled = false;
+};
 $("#btnIndexReveal").onclick = async () => {
   if (!(await ensureIndexConnected()) || !(await ensureConnected("the index listing"))) return;
   const host = $("#fsOut"); resetChecks(host);
@@ -691,7 +889,7 @@ $("#btnIndexReveal").onclick = async () => {
       + "\n\nNote: the leading dot makes .photoindex HIDDEN in Finder."
       + "\nPress Cmd+Shift+.  in Finder to show hidden folders.";
     host.append(pre);
-  } catch (e){ st.err(errText(e)); }
+  } catch (e){ st.err(humanError(e)); }
 };
 
 /* ================= backups ================= */
@@ -715,7 +913,7 @@ $("#btnBackup").onclick = async () => {
     }
   } catch (e){
     checksBox(host).append(checkRow({ status:"err", title:"Could not open the index",
-      detail:errText(e) }));
+      detail:humanError(e) }));
     btn.disabled = false; btn.textContent = "Back up now";
     return;
   }
@@ -730,8 +928,8 @@ $("#btnBackup").onclick = async () => {
     toast("Backup complete: " + (b.bytes/1048576).toFixed(1) + " MB");
     await showBackups();
   } catch (e){
-    st.err(errText(e));
-    toast("Backup failed: " + errText(e));
+    st.err(humanError(e));
+    toast("Backup failed: " + humanError(e));
   } finally {
     btn.disabled = false; btn.textContent = "Back up now";
   }
@@ -774,7 +972,7 @@ async function showBackups(){
           const r2 = await restoreBackup(b.name, m => st2.note(m));
           st2.ok("Restored " + r2.records + " records, " + r2.vectors + " vectors.");
           await refreshPlan();
-        } catch (e){ st2.err(errText(e)); }
+        } catch (e){ st2.err(humanError(e)); }
       };
       td.append(btn); tr.append(td);
       tb.append(tr);
@@ -782,7 +980,7 @@ async function showBackups(){
     t.append(tb); box.append(t);
     host.append(box);
   } catch (e){ renderChecks(host, [{ status:"err", title:"Could not list backups",
-    detail:errText(e) }]); }
+    detail:humanError(e) }]); }
 }
 
 /* ================= geonames button ================= */
@@ -799,7 +997,7 @@ $("#btnGeo").onclick = async () => {
     await geoFetchAndCache((phase, detail) =>
       st.note(phase + (detail ? "  " + detail : "")));
     st.ok(GEO.count.toLocaleString() + " places cached in .photoindex/geo/ — this is now offline.");
-  } catch (e){ st.err(errText(e) + " — photos will store coordinates only."); }
+  } catch (e){ st.err(humanError(e) + " — photos will store coordinates only."); }
 };
 
 /* ================= settings wiring ================= */

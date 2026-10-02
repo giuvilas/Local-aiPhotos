@@ -342,6 +342,12 @@ async function runScan(files, mode, resuming){
       if (!f) return;
       try {
         const rec = await scanOne(f, RUN.abort.signal);
+        /* A rescan builds the record afresh; a photo the user removed from the
+           library must stay removed. */
+        const was = IDX.records.get(rec.id);
+        if (was && was.hidden){ rec.hidden = true; rec.hidden_at = was.hidden_at; }
+        if (was && was.favourite) rec.favourite = true;
+        if (was && was.rotation) rec.rotation = was.rotation;    // a view setting the user chose
         RUN.streak = 0;                       // a success breaks the failure streak
         RUN.times.push(rec.secs);
         if (rec.out_tokens) RUN.tokens.push(rec.out_tokens);
@@ -510,11 +516,18 @@ async function resumeScan(){
      reassuring toast: anything not in the CURRENT plan may simply be out of
      scope, not finished. Say so, and let the user decide. */
   if (gone > 0 && files.length < cp.pending.length * 0.9){
-    const go = confirm(gone + " of " + cp.pending.length + " queued photos are not in the "
-      + "current plan.\n\nThey may be finished, deleted, or simply outside the current "
-      + "scan scope" + (S.scanScope ? " (" + S.scanScope + ")" : "") + ".\n\n"
-      + "Resume with the remaining " + files.length + "?\n\n"
-      + "Cancel keeps the checkpoint intact so nothing is lost.");
+    const go = await confirmDialog({
+      title: "Resume with " + files.length.toLocaleString() + " photos?",
+      body: [
+        [el("strong", null, gone.toLocaleString()), " of " + cp.pending.length.toLocaleString()
+          + " queued photos are not in the current plan."],
+        "They may be finished, deleted, or simply outside the current scan scope"
+          + (S.scanScope ? " (" + S.scanScope + ")" : "") + "."
+      ],
+      note: "Cancel keeps the checkpoint intact so nothing is lost.",
+      confirmLabel: "Resume " + files.length.toLocaleString(),
+      cancelLabel: "Cancel"
+    });
     if (!go) return;
   }
   if (!files.length){ await clearCheckpoint(); toast("Nothing left to resume."); await refreshPlan(); return; }
