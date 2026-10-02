@@ -486,6 +486,12 @@ function storageUnitMs(){
   return seen.length ? Math.max(...seen) : null;
 }
 
+/* Some operations are known to stall far longer than any throughput figure
+   suggests: listing .photoindex/ on the reference share was measured at over two
+   minutes with no response, and thumbs/ at 75 seconds. Bounding those by a
+   computed deadline only manufactures failures, so they ask for the ceiling. */
+function ioCeiling(){ return S.io.deadlineCapMs; }
+
 function ioDeadline(units, floorMs){
   const unit = storageUnitMs();
   const floor = floorMs || S.io.deadlineFloorMs;
@@ -529,6 +535,15 @@ async function indexOp(label, fn, opts){
     if (o.onPhase) await o.onPhase(m);
   };
   const ms = o.timeoutMs || ioDeadline(o.cost || 1, o.floorMs);
+  /* A slow share sits on one label for minutes with nothing to show, which is
+     indistinguishable from being wedged. Re-emit the current step with the time
+     elapsed and the time allowed, so waiting looks like waiting. */
+  const t0 = Date.now();
+  let tick = null;
+  if (o.onPhase) tick = setInterval(() => {
+    const secs = Math.round((Date.now() - t0) / 1000);
+    if (secs >= 3) o.onPhase(phase + "  (" + secs + "s of " + Math.round(ms / 1000) + "s)");
+  }, 1000);
   try {
     return await withDeadline(label, ms, fn(say));
   } catch (e){
@@ -541,7 +556,7 @@ async function indexOp(label, fn, opts){
     err.phase = phase;
     err.op = label;
     throw err;
-  }
+  } finally { if (tick) clearInterval(tick); }
 }
 
 /* Re-acquires folder permission from inside a click. Chrome grants it only in

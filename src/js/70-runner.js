@@ -551,12 +551,12 @@ async function planThumbnails(onPhase, signal){
   const say = async m => { if (onPhase) await onPhase(m); };
   await say("Opening the index…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   if (!IDX.loaded) { await say("Loading records…"); await loadRecords(); }
 
   await say("Listing existing thumbnails…");
   const have = await indexOp("listing thumbnails", note => listThumbIds(note),
-    { onPhase: say, cost: 60 });          // the 75-second operation, deliberately
+    { onPhase: say, timeoutMs: ioCeiling() });          // the 75-second operation, deliberately
 
   /* Error stubs never had a thumbnail and are not supposed to get one; a
      soft-deleted record describes a photo that is no longer there. */
@@ -670,7 +670,7 @@ async function planFaceScan(onPhase, signal){
   const say = async m => { if (onPhase) await onPhase(m); };
   await say("Opening the index…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   if (!IDX.loaded){ await say("Loading records…"); await loadRecords(); }
   await say("Loading known faces…");
   await loadFaces();
@@ -730,7 +730,7 @@ async function planFaceRefine(onPhase, signal){
   const say = async m => { if (onPhase) await onPhase(m); };
   await say("Opening the index…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   if (!IDX.loaded){ await say("Loading records…"); await loadRecords(); }
   if (!FACES.loaded){ await say("Loading known faces…"); await loadFaces(); }
   await say(FACES.faces.size + " faces known; checking which came from thumbnails…");

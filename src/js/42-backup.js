@@ -199,14 +199,14 @@ async function makeIndexBackup(reason, onProgress, options){
      KB/s. They exist to turn a hang into a message, not to police speed. */
   await say("Opening the index…");
   await indexOp("opening the index",
-    note => ensureIndex(note, { write:false }), { onPhase: say, cost: 4 });
+    note => ensureIndex(note, { write:false }), { onPhase: say, timeoutMs: ioCeiling() });
   await say("Waking the drive…");
   await wakeStorage(say);
   /* Now that the index has been opened, storage speed is measured rather than
      guessed, so everything below gets a deadline sized to this share. */
   await say("Opening backups/…");
   const dir = await indexOp("opening backups/", () => backupsDir(),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   await sweepSwapFiles(dir);
   const stamp = new Date().toISOString().replace(/[:.]/g, "-") + "-" + crypto.randomUUID().slice(0,8);
   await say("Creating " + stamp + "…");

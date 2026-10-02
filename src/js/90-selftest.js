@@ -1165,6 +1165,33 @@ async function selfTest(){
         } catch (e){ e2 = e; }
         ok("a stalled op times out and names itself",
            !!e2 && /a stalled op/.test(errText(e2)), e2 && errText(e2));
+
+        /* Directory operations on the reference share were measured at over two
+           minutes with no response. Bounding them by a figure derived from a
+           warm read produced 26s, then 53s, and failed both times on a share
+           that was only slow. They ask for the ceiling instead. */
+        ok("the ceiling is at least the measured worst case",
+           ioCeiling() >= 120000, ioCeiling() + " ms");
+        ok("and no larger than the configured cap",
+           ioCeiling() === S.io.deadlineCapMs, ioCeiling() + " ms");
+
+        /* A long operation must look alive: the step is re-emitted with the time
+           elapsed, because sitting on one label for minutes is indistinguishable
+           from being wedged. */
+        {
+          const seen = [];
+          let e3 = null;
+          try {
+            await indexOp("a slow step", async note => {
+              await note("Opening .photoindex/…");
+              await new Promise(r => setTimeout(r, 4200));
+            }, { timeoutMs: 3500, onPhase: m => { seen.push(m); } });
+          } catch (e){ e3 = e; }
+          ok("a slow step reports the seconds elapsed",
+             seen.some(m => /\(\d+s of \d+s\)/.test(m)), seen.slice(-2).join(" | "));
+          ok("and still names the step it died on",
+             !!e3 && /Opening \.photoindex/.test(errText(e3)), e3 && errText(e3));
+        }
       }
 
       S.indexMode = keepMode; S.indexDirHandle = keepIdx;

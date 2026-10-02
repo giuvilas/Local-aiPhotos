@@ -554,6 +554,24 @@ reported in about 26.
 The general shape: **a measurement of a system at work does not describe the same system
 starting up**, and a deadline has to cover the worse of the two.
 
+**That allowance was still not enough, and the reason is worth recording.** With it, opening
+the index was bounded at 8 s floor plus 45 s allowance, 53 s, and failed again. The table in
+[OPERATIONS.md](OPERATIONS.md) already said why: listing `.photoindex/` on this share was
+measured at **over two minutes with no response**, and `thumbs/` at 75.6 s. The deadline was
+below the operation's own recorded worst case, so it was a failure generator rather than a
+safety net.
+
+Deriving a bound from throughput only works where the cost is proportional to throughput.
+Directory operations here are not: they either answer quickly or stall for minutes, and no
+multiple of a warm 162 ms read describes that. Those operations now ask for the ceiling
+(`ioCeiling()`), and the deadline keeps only the job it can actually do, which is bounding a
+true hang rather than policing speed.
+
+The companion fix is cosmetic but matters as much: a step that may legitimately run for two
+minutes now re-emits itself with the time elapsed and the time allowed, because sitting on
+one unchanging label is indistinguishable from being wedged, and that ambiguity has cost
+more time in this project than any single defect.
+
 ---
 
 ## 17. Index size

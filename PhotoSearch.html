@@ -1317,6 +1317,12 @@ function storageUnitMs(){
   return seen.length ? Math.max(...seen) : null;
 }
 
+/* Some operations are known to stall far longer than any throughput figure
+   suggests: listing .photoindex/ on the reference share was measured at over two
+   minutes with no response, and thumbs/ at 75 seconds. Bounding those by a
+   computed deadline only manufactures failures, so they ask for the ceiling. */
+function ioCeiling(){ return S.io.deadlineCapMs; }
+
 function ioDeadline(units, floorMs){
   const unit = storageUnitMs();
   const floor = floorMs || S.io.deadlineFloorMs;
@@ -1360,6 +1366,15 @@ async function indexOp(label, fn, opts){
     if (o.onPhase) await o.onPhase(m);
   };
   const ms = o.timeoutMs || ioDeadline(o.cost || 1, o.floorMs);
+  /* A slow share sits on one label for minutes with nothing to show, which is
+     indistinguishable from being wedged. Re-emit the current step with the time
+     elapsed and the time allowed, so waiting looks like waiting. */
+  const t0 = Date.now();
+  let tick = null;
+  if (o.onPhase) tick = setInterval(() => {
+    const secs = Math.round((Date.now() - t0) / 1000);
+    if (secs >= 3) o.onPhase(phase + "  (" + secs + "s of " + Math.round(ms / 1000) + "s)");
+  }, 1000);
   try {
     return await withDeadline(label, ms, fn(say));
   } catch (e){
@@ -1372,7 +1387,7 @@ async function indexOp(label, fn, opts){
     err.phase = phase;
     err.op = label;
     throw err;
-  }
+  } finally { if (tick) clearInterval(tick); }
 }
 
 /* Re-acquires folder permission from inside a click. Chrome grants it only in
@@ -3104,14 +3119,14 @@ async function makeIndexBackup(reason, onProgress, options){
      KB/s. They exist to turn a hang into a message, not to police speed. */
   await say("Opening the index…");
   await indexOp("opening the index",
-    note => ensureIndex(note, { write:false }), { onPhase: say, cost: 4 });
+    note => ensureIndex(note, { write:false }), { onPhase: say, timeoutMs: ioCeiling() });
   await say("Waking the drive…");
   await wakeStorage(say);
   /* Now that the index has been opened, storage speed is measured rather than
      guessed, so everything below gets a deadline sized to this share. */
   await say("Opening backups/…");
   const dir = await indexOp("opening backups/", () => backupsDir(),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   await sweepSwapFiles(dir);
   const stamp = new Date().toISOString().replace(/[:.]/g, "-") + "-" + crypto.randomUUID().slice(0,8);
   await say("Creating " + stamp + "…");
@@ -5035,12 +5050,12 @@ async function planThumbnails(onPhase, signal){
   const say = async m => { if (onPhase) await onPhase(m); };
   await say("Opening the index…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   if (!IDX.loaded) { await say("Loading records…"); await loadRecords(); }
 
   await say("Listing existing thumbnails…");
   const have = await indexOp("listing thumbnails", note => listThumbIds(note),
-    { onPhase: say, cost: 60 });          // the 75-second operation, deliberately
+    { onPhase: say, timeoutMs: ioCeiling() });          // the 75-second operation, deliberately
 
   /* Error stubs never had a thumbnail and are not supposed to get one; a
      soft-deleted record describes a photo that is no longer there. */
@@ -5154,7 +5169,7 @@ async function planFaceScan(onPhase, signal){
   const say = async m => { if (onPhase) await onPhase(m); };
   await say("Opening the index…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   if (!IDX.loaded){ await say("Loading records…"); await loadRecords(); }
   await say("Loading known faces…");
   await loadFaces();
@@ -5214,7 +5229,7 @@ async function planFaceRefine(onPhase, signal){
   const say = async m => { if (onPhase) await onPhase(m); };
   await say("Opening the index…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
-    { onPhase: say, cost: 4 });
+    { onPhase: say, timeoutMs: ioCeiling() });
   if (!IDX.loaded){ await say("Loading records…"); await loadRecords(); }
   if (!FACES.loaded){ await say("Loading known faces…"); await loadFaces(); }
   await say(FACES.faces.size + " faces known; checking which came from thumbnails…");
@@ -11554,6 +11569,33 @@ async function selfTest(){
         } catch (e){ e2 = e; }
         ok("a stalled op times out and names itself",
            !!e2 && /a stalled op/.test(errText(e2)), e2 && errText(e2));
+
+        /* Directory operations on the reference share were measured at over two
+           minutes with no response. Bounding them by a figure derived from a
+           warm read produced 26s, then 53s, and failed both times on a share
+           that was only slow. They ask for the ceiling instead. */
+        ok("the ceiling is at least the measured worst case",
+           ioCeiling() >= 120000, ioCeiling() + " ms");
+        ok("and no larger than the configured cap",
+           ioCeiling() === S.io.deadlineCapMs, ioCeiling() + " ms");
+
+        /* A long operation must look alive: the step is re-emitted with the time
+           elapsed, because sitting on one label for minutes is indistinguishable
+           from being wedged. */
+        {
+          const seen = [];
+          let e3 = null;
+          try {
+            await indexOp("a slow step", async note => {
+              await note("Opening .photoindex/…");
+              await new Promise(r => setTimeout(r, 4200));
+            }, { timeoutMs: 3500, onPhase: m => { seen.push(m); } });
+          } catch (e){ e3 = e; }
+          ok("a slow step reports the seconds elapsed",
+             seen.some(m => /\(\d+s of \d+s\)/.test(m)), seen.slice(-2).join(" | "));
+          ok("and still names the step it died on",
+             !!e3 && /Opening \.photoindex/.test(errText(e3)), e3 && errText(e3));
+        }
       }
 
       S.indexMode = keepMode; S.indexDirHandle = keepIdx;
