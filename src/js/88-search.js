@@ -258,7 +258,14 @@ function sgPop(){
 
 /* The filters a set of chips stands for, in the form searchPhotos takes. */
 function sgArgs(){
-  const F = sgFacts(), a = { limit:100000, max:100000, photo_sets:[] };
+  /* interpret_people:false is REQUIRED here. searchPhotos interprets names by
+     default, which is right for the Search tab where the user typed a name on
+     purpose. In this field a person is chosen as a chip instead, so leaving
+     interpretation on meant any typed word matching a name became a hidden hard
+     filter, and two people sharing a name made resolvePersonName throw into
+     "Search failed". The chips carry the people; the text is just text. */
+  const F = sgFacts(), a = { limit:100000, max:100000, photo_sets:[],
+                             interpret_people:false };
   const types = [], things = [], occ = [];
   for (const c of GAL.chips){
     if (c.kind === "person") a.photo_sets.push((F.people.find(p => p.id === c.id) || { ids:new Set() }).ids);

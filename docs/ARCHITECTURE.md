@@ -345,31 +345,13 @@ start, so no later stage needs to remember to do it.
 
 ## The chat agent
 
-A loop against `/v1/chat/completions` with `tools`, capped at six rounds. **Tools execute
-locally.** The model never sees the index, only compact JSON rows (id, date, place,
-caption of at most 150 characters, score). The single exception is `look_at_photos`, which
-sends up to six stored thumbnails back to the vision model.
-
-There are nine tools: `search_photos`, `filter_photos`, `list_people`, `find_similar`,
-`get_photo`, `list_entities`, `list_events`, `library_stats` and `look_at_photos`.
-The direct Search tab uses the same retrieval function as chat. Known unquoted names
-become hard person-ID filters; multiple names require everyone to appear. Quoted names
-stay literal, name interpretation can be disabled, and duplicate names require an explicit
-person selection. The response includes applied filters and a full result count for
-pagination. Metadata and keywords need no model server; semantic ranking is optional.
-
-[↑ Back to Index](#index)
-
-
-## The chat agent
-
 A `while` loop against `/v1/chat/completions` with `tools`, capped at six rounds. **Tools
-execute locally** — the model never sees the index, only compact JSON rows (id, date, place,
-caption ≤150 chars, user-assigned names, score). The one exception is `look_at_photos`, which sends up to six
-stored thumbnails back to the vision model.
+execute locally**: the model never sees the index, only compact JSON rows (id, date, place,
+caption of at most 150 characters, user-assigned names, score). The one exception is
+`look_at_photos`, which sends up to six stored thumbnails back to the vision model.
 
-Nine tools: `search_photos`, `filter_photos`, `list_people`, `find_similar`, `get_photo`, `list_entities`,
-`list_events`, `library_stats`, `look_at_photos`.
+Nine tools: `search_photos`, `filter_photos`, `list_people`, `find_similar`, `get_photo`,
+`list_entities`, `list_events`, `library_stats`, `look_at_photos`.
 
 - **History** is trimmed to a character budget and never orphans a tool reply from the
   assistant turn that requested it. Tool results are large and context is finite.
@@ -377,6 +359,15 @@ Nine tools: `search_photos`, `filter_photos`, `list_people`, `find_similar`, `ge
   badge showing which mode is live.
 - **Model output is never inserted as HTML.** A small Markdown subset is rendered into DOM
   nodes, so a caption containing markup stays inert. A test asserts exactly that.
+
+The direct Search tab uses the same retrieval function as chat. Known unquoted names become
+hard person-ID filters; multiple names require everyone to appear. Quoted names stay
+literal, name interpretation can be disabled, and duplicate names require an explicit person
+selection. The response includes applied filters and a full result count for pagination.
+Metadata and keywords need no model server; semantic ranking is optional.
+
+The header search field is different: people are chosen as chips there, so it passes
+`interpret_people:false` and its typed text stays literal.
 
 [↑ Back to Index](#index)
 
@@ -521,11 +512,11 @@ nothing shifts under the reader.
 
 ## Faces
 
-Detection and embedding run **in the browser**, because the model server's embeddings
-endpoint is text-only: there is no way to push this onto the server.
-`.photoindex/faces/` holds `faces.jsonl` (geometry and provenance), `facevecs.bin`/`.json`
-(unit-length vectors, reconciled in both directions on load like the photo vectors) and
-`people.json` (groups and the names you gave them).
+Detection and embedding run **in the browser**, separately from scene captioning, because
+the model server's embeddings endpoint is text-only: there is no way to push this onto the
+server. `.photoindex/faces/` holds `faces.jsonl` (geometry and provenance),
+`facevecs.bin`/`.json` (unit-length vectors, reconciled in both directions on load like the
+photo vectors) and `people.json` (groups and the names you gave them).
 
 **Design decisions**
 
@@ -540,16 +531,26 @@ endpoint is text-only: there is no way to push this onto the server.
 - **The engine configuration is recorded on every face.** Vectors from different
   configurations are not comparable, so they are reported rather than silently mixed.
 - **A name is authoritative.** Re-grouping never re-clusters a named person's faces away, and
-  unnamed faces are matched against named people first, so new photos join by themselves.
-  Merge and split exist because clustering gets some wrong.
-- **Two passes.** Thumbnails first (fast, and tells us which photos contain people), then
+  unnamed faces are compared with fixed confirmed anchors. Automatic matches need a threshold
+  margin and separation from competing people; ambiguous matches enter review and stay absent
+  from named search until confirmed. Conflicting anchor sets and same-photo assignments are
+  excluded from automatic matching. Merge and split exist because clustering gets some wrong.
+- **Corrections persist.** Splits record separation constraints and rejections are
+  remembered. Explicit merges can override earlier decisions. One previous people edit is
+  saved for undo, and switching libraries clears the face and name caches.
+- **Nothing is inferred.** A group is "Group 1" until you type a name. `human`'s descriptor
+  model computes age and a gender guess as a side effect of the embedding and cannot be asked
+  not to; both are dropped at the adapter boundary, a face row is built field by field rather
+  than spread, and a test asserts neither ever reaches storage. Emotion, iris, antispoof and
+  liveness are switched off outright.
+- **Two passes.** Thumbnails first (fast, and it tells us which photos contain people), then
   optionally the originals for just those photos, decoded large, because a face below 112 px
   is upscaled into the model. Re-measuring matches old faces to new by box overlap, so names
   survive.
-- **The aligned 112×112 crop is stored** (about 5 KB a face). It is the output of work that
-  cannot be cheaply redone, so keeping it turns a change of embedder into a minute's work
-  instead of a day's. Display tiles, by contrast, store no crop: a 0..1 box plus the existing
-  thumbnail renders the same picture for free.
+- **The aligned 112x112 crop is stored** (about 5 KB a face). It is the output of work that
+  cannot be cheaply redone, reading a photo off the share and detecting, so keeping it turns a
+  change of embedder into a minute's work instead of a day's. Display tiles, by contrast,
+  store no crop: a 0..1 box plus the existing thumbnail renders the same picture for free.
 - **Thumbnails need no photo folder.** They are keyed by record id, so a pass over thumbnails
   covers the whole index whichever folder is connected. Only the "originals" source needs a
   walk, and can therefore only reach the folder that is open.
@@ -557,14 +558,6 @@ endpoint is text-only: there is no way to push this onto the server.
   small files (not the multi-megabyte vectors), so chat and the search box can filter by name
   without loading the grouping machinery.
 - **One action deletes all of it**, leaving the rest of the index untouched.
-
-**The privacy boundary**
-
-Nothing is inferred. A group is "Group 1" until you type a name, and the app never decides
-*who* anyone is. The descriptor model computes an age and gender guess as a side effect of
-the embedding and cannot be asked not to, so both are dropped at the adapter boundary. A face
-row is built field by field rather than spread, and a test asserts neither ever reaches
-storage. Emotion, iris, antispoof and liveness are switched off outright.
 
 [↑ Back to Index](#index)
 
@@ -696,55 +689,24 @@ is reported, because the weaker the contract the more the validator has to repai
 [↑ Back to Index](#index)
 
 
-## Faces
+## Surviving a refresh
 
-Detection and embedding run **in the browser**, separately from scene captioning.
-`.photoindex/faces/` holds `faces.jsonl` (geometry
-and provenance), `facevecs.bin`/`.json` (unit-length vectors, reconciled both ways on load
-like the photo vectors), and `people.json` (groups and the names you gave them).
+A refresh empties the page and Chrome drops the folder permission, so the index cannot be
+read until the folder is reconnected. `89-restore.js` keeps what you were doing in this
+browser's `localStorage`: the Library's chips and sort order, the open photo, and the last
+40 chat turns.
 
-- **Tiles use normalized face boxes.** The current tile renderer zooms the stored photo
-  thumbnail; aligned crops are also stored when available for later remeasurement.
-- **Alignment is mandatory.** The descriptor runs on the crop it is given, so `face.mesh`
-  and `face.detection.rotation` are on: without them the vector encodes head angle rather
-  than identity (0.53 self-similarity versus 0.93 — see FINDINGS §10).
-- **Grouping is greedy against centroids**, not all-pairs: 8,000 faces against a few
-  hundred centroids is seconds, where all-pairs would be minutes. A candidate must be
-  close to an actual member as well as to the centroid, because centroid-only merging
-  drifts until a group is a blur of several people.
-- **The engine configuration is recorded on every face.** Vectors from a different
-  configuration are not comparable, so they are reported rather than silently mixed in.
-- **A name is authoritative.** Re-grouping never re-clusters a named person's faces away,
-  and unnamed faces are compared with fixed confirmed anchors. Automatic matches need
-  a threshold margin and separation from competing people; ambiguous matches enter
-  review and remain absent from named search until confirmed. Conflicting anchor sets
-  and same-photo assignments are excluded from automatic matching.
-- **Corrections persist.** Splits record separation constraints; rejections are remembered.
-  Explicit merges can override earlier decisions. One previous people edit is saved for
-  undo, and switching libraries clears face/name caches.
-- **Nothing is inferred.** A group is "Group 1" until you type a name. `human`'s descriptor
-  model computes age and a gender guess as a side effect of the embedding and cannot be
-  asked not to; both are dropped at the adapter boundary, a face row is built field by
-  field rather than spread, and a test asserts neither ever reaches storage. Emotion, iris,
-  antispoof and liveness are switched off outright.
-- **Thumbnails need no photo folder.** They are keyed by record id, so a face pass covers
-  the whole index regardless of which folder is connected. Only the "originals" source
-  needs a walk, and it can therefore only reach the folder that is open.
-- **Names work everywhere**, not only in the People tab: `ensureFaceNames()` reads the two
-  small files (not the vectors, which are tens of megabytes) so chat and the search box can
-  filter by a name without loading the grouping machinery.
-- **The aligned 112×112 crop is stored** (~5 KB a face). It is the output of work that
-  cannot be cheaply redone — reading a photo off the share and detecting — so keeping it
-  makes changing embedder a minute's work instead of a day's.
-- **Two passes.** Thumbnails first (fast, and tells us which photos have people in them),
-  then optionally the originals for just those photos, decoded large, because a face below
-  112 px is upscaled into the model. The existing overlap-based refinement does not safely
-  remap correction history and is blocked when saved corrections exist. A staged migration
-  is required for historical model/dimension changes; see the review and roadmap.
-- **One action deletes all of it**, leaving the rest of the index untouched.
+**That last item is photo content outside the index.** A chat answer can contain captions,
+place names and the names you assigned to people, so `ps.chat` holds personal material that
+is not in `.photoindex/`, is not covered by a backup, and is not removed by any index
+operation. Clearing the conversation clears it, and that write is now immediate rather than
+waiting on the one-second saver, which never ran while a restore was still pending.
+
+It is per browser profile and never transmitted. Worth knowing when handing a machine on.
 
 [↑ Back to Index](#index)
 
+---
 
 ## Known gaps
 

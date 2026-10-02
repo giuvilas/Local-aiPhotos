@@ -215,6 +215,14 @@ function galSelectMode(on){
 let galIO = Promise.resolve();
 function galPersist(ids, change){
   const run = async () => {
+    /* A backup copies records.jsonl while this would append to it, so the copy
+       could land mid-write or miss the edit entirely. Every other writer already
+       respects this interlock (42-backup, 86-peopleui, 70-runner); the Library
+       did not. Deliberately NOT gated on RUN.active: appendLines serialises
+       writes, so an edit during a scan is safe, and blocking it for hours would
+       be a worse bargain. All three callers toast the error. */
+    if (libraryMaintenance)
+      throw new Error("Wait for the backup or restore to finish before changing the library.");
     ids = [...ids].filter(id => IDX.records.has(id));
     if (!ids.length) return 0;
     await ensureIndex(null, { write:false });
@@ -729,6 +737,13 @@ $("#vwImg").addEventListener("dblclick", e => vwZoomTo(VW.z > 1 ? 1 : 2.5, e.cli
 }
 document.addEventListener("keydown", e => {
   if (!VW.open) return;
+  /* The same guard the Select-mode handler above uses. Without it every key
+     aimed at a form control was stolen: the viewer carries its own
+     <input type="range" id="vwZr">, so arrow keys moved to the next photo
+     instead of zooming, and Backspace there called vwRemove() and took the
+     photo out of the library. The header search field is reachable too, because
+     openViewer neither hides the header nor traps focus. */
+  if (e.target.closest && e.target.closest("input,textarea,select")) return;
   if (e.key === "Escape") closeViewer();
   else if (e.key === "ArrowLeft") vwStep(-1);
   else if (e.key === "ArrowRight") vwStep(1);

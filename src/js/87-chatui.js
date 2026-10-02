@@ -293,6 +293,11 @@ $("#chatInput").addEventListener("keydown", e => {
 $("#chatClear").onclick = () => {
   CHAT.messages = []; CHAT.turns = []; CHAT.lastPhotos = [];
   $("#chatLog").innerHTML = "";
+  /* Write the cleared state through at once. The one-second saver normally does
+     it, but it returns early while RESTORE.pending is true -- which it stays
+     until the folder is reconnected -- so clearing before reconnecting left the
+     old conversation in localStorage to reappear on the next refresh. */
+  if (typeof restoreSave === "function") restoreSave(true);
   toast("Conversation cleared.");
 };
 $("#chatSave").onclick = async () => {

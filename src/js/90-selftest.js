@@ -2228,6 +2228,29 @@ async function selfTest(){
            candidateSet(sgArgs()).map(r => r.id), ["s1"]);
 
         /* tokens live inside the field */
+        /* The header field must NOT reinterpret typed words as people. A person
+           is chosen as a chip here, so leaving searchPhotos' default on meant a
+           typed word matching a name became a hidden hard filter, and two
+           people sharing a name threw into "Search failed". Nothing else in the
+           suite reaches that path with a non-empty query, which is why 673
+           green assertions did not notice. */
+        {
+          GAL.chips = []; GAL.texts = ["Anna"];
+          const a = sgArgs();
+          eq("the header search never interprets names", a.interpret_people, false);
+          /* With interpretation off, "Anna" is text, not a person filter. */
+          const asText = peopleSearchArgs(sgArgs());
+          eq("so a typed name stays text", (asText.person_ids || []).length, 0);
+          /* And a duplicate name cannot throw out of the header field. */
+          const dup = { id:"dup-1", name:"Anna", face_ids:["f1"] };
+          FACES.people.push(dup);
+          let threw = false;
+          try { peopleSearchArgs(sgArgs()); } catch { threw = true; }
+          ok("a duplicate name does not break the header search", !threw);
+          FACES.people = FACES.people.filter(x => x !== dup);
+          GAL.texts = [];
+        }
+
         GAL.chips = both.chips.slice(); GAL.texts = ["sea"];
         sgRenderChips();
         eq("every chip and word is a token in the field", document.querySelectorAll("#sgChips .sgChip").length, 3);

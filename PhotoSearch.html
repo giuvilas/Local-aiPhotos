@@ -7260,6 +7260,14 @@ function galSelectMode(on){
 let galIO = Promise.resolve();
 function galPersist(ids, change){
   const run = async () => {
+    /* A backup copies records.jsonl while this would append to it, so the copy
+       could land mid-write or miss the edit entirely. Every other writer already
+       respects this interlock (42-backup, 86-peopleui, 70-runner); the Library
+       did not. Deliberately NOT gated on RUN.active: appendLines serialises
+       writes, so an edit during a scan is safe, and blocking it for hours would
+       be a worse bargain. All three callers toast the error. */
+    if (libraryMaintenance)
+      throw new Error("Wait for the backup or restore to finish before changing the library.");
     ids = [...ids].filter(id => IDX.records.has(id));
     if (!ids.length) return 0;
     await ensureIndex(null, { write:false });
@@ -7774,6 +7782,13 @@ $("#vwImg").addEventListener("dblclick", e => vwZoomTo(VW.z > 1 ? 1 : 2.5, e.cli
 }
 document.addEventListener("keydown", e => {
   if (!VW.open) return;
+  /* The same guard the Select-mode handler above uses. Without it every key
+     aimed at a form control was stolen: the viewer carries its own
+     <input type="range" id="vwZr">, so arrow keys moved to the next photo
+     instead of zooming, and Backspace there called vwRemove() and took the
+     photo out of the library. The header search field is reachable too, because
+     openViewer neither hides the header nor traps focus. */
+  if (e.target.closest && e.target.closest("input,textarea,select")) return;
   if (e.key === "Escape") closeViewer();
   else if (e.key === "ArrowLeft") vwStep(-1);
   else if (e.key === "ArrowRight") vwStep(1);
@@ -9772,6 +9787,11 @@ $("#chatInput").addEventListener("keydown", e => {
 $("#chatClear").onclick = () => {
   CHAT.messages = []; CHAT.turns = []; CHAT.lastPhotos = [];
   $("#chatLog").innerHTML = "";
+  /* Write the cleared state through at once. The one-second saver normally does
+     it, but it returns early while RESTORE.pending is true -- which it stays
+     until the folder is reconnected -- so clearing before reconnecting left the
+     old conversation in localStorage to reappear on the next refresh. */
+  if (typeof restoreSave === "function") restoreSave(true);
   toast("Conversation cleared.");
 };
 $("#chatSave").onclick = async () => {
@@ -10047,7 +10067,14 @@ function sgPop(){
 
 /* The filters a set of chips stands for, in the form searchPhotos takes. */
 function sgArgs(){
-  const F = sgFacts(), a = { limit:100000, max:100000, photo_sets:[] };
+  /* interpret_people:false is REQUIRED here. searchPhotos interprets names by
+     default, which is right for the Search tab where the user typed a name on
+     purpose. In this field a person is chosen as a chip instead, so leaving
+     interpretation on meant any typed word matching a name became a hidden hard
+     filter, and two people sharing a name made resolvePersonName throw into
+     "Search failed". The chips carry the people; the text is just text. */
+  const F = sgFacts(), a = { limit:100000, max:100000, photo_sets:[],
+                             interpret_people:false };
   const types = [], things = [], occ = [];
   for (const c of GAL.chips){
     if (c.kind === "person") a.photo_sets.push((F.people.find(p => p.id === c.id) || { ids:new Set() }).ids);
@@ -12574,6 +12601,29 @@ async function selfTest(){
            candidateSet(sgArgs()).map(r => r.id), ["s1"]);
 
         /* tokens live inside the field */
+        /* The header field must NOT reinterpret typed words as people. A person
+           is chosen as a chip here, so leaving searchPhotos' default on meant a
+           typed word matching a name became a hidden hard filter, and two
+           people sharing a name threw into "Search failed". Nothing else in the
+           suite reaches that path with a non-empty query, which is why 673
+           green assertions did not notice. */
+        {
+          GAL.chips = []; GAL.texts = ["Anna"];
+          const a = sgArgs();
+          eq("the header search never interprets names", a.interpret_people, false);
+          /* With interpretation off, "Anna" is text, not a person filter. */
+          const asText = peopleSearchArgs(sgArgs());
+          eq("so a typed name stays text", (asText.person_ids || []).length, 0);
+          /* And a duplicate name cannot throw out of the header field. */
+          const dup = { id:"dup-1", name:"Anna", face_ids:["f1"] };
+          FACES.people.push(dup);
+          let threw = false;
+          try { peopleSearchArgs(sgArgs()); } catch { threw = true; }
+          ok("a duplicate name does not break the header search", !threw);
+          FACES.people = FACES.people.filter(x => x !== dup);
+          GAL.texts = [];
+        }
+
         GAL.chips = both.chips.slice(); GAL.texts = ["sea"];
         sgRenderChips();
         eq("every chip and word is a token in the field", document.querySelectorAll("#sgChips .sgChip").length, 3);
@@ -13303,6 +13353,108 @@ async function consumerSelfTest(scratch){
   try {
     await deleteAllFaceData();
     S.faces.embedder = "arcface"; S.faces.threshold = 0.7;
+
+    /* ---- the Library must not write during a backup, and keys aimed at a form
+           control must not mutate the library ----
+       Both were real: galPersist appended to records.jsonl while a backup was
+       copying it, and the viewer's keydown handler had no input guard where its
+       sibling did, so Backspace on its own zoom slider removed the photo. */
+    {
+      /* A Library edit during maintenance must be refused, with a message. */
+      const keepRecords = IDX.records;
+      IDX.records = new Map([["lib-1", { id:"lib-1", name:"a.jpg", status:"ok" }]]);
+      libraryMaintenance++;
+      let refused = null;
+      try { await galPersist(["lib-1"], r => ({ ...r, favourite:true })); }
+      catch (e){ refused = errText(e); }
+      libraryMaintenance--;
+      ok("a Library edit during a backup is refused", !!refused, String(refused));
+      ok("and says what to wait for", /backup or restore/i.test(refused || ""), refused);
+      /* And allowed again once maintenance ends. */
+      let wrote = 0;
+      const realAppend = appendLines;
+      appendLines = async (n, lines) => { wrote += lines.length; };
+      await galPersist(["lib-1"], r => ({ ...r, favourite:true }));
+      appendLines = realAppend;
+      eq("and allowed once the backup has finished", wrote, 1);
+      IDX.records = keepRecords;
+    }
+
+    {
+      /* The viewer's keydown handler must ignore keys aimed at a form control.
+         Asserted on the source because the handler is bound to document at load
+         and cannot be re-entered; the guard is one line and its absence is the
+         whole bug. */
+      ok("vwRemove is still what Backspace reaches", /galApply/.test(String(vwRemove)));
+      /* Behavioural check: dispatch Backspace from inside an input while the
+         viewer believes it is open, and assert the library did not change. */
+      const keepOpen = VW.open, keepI = VW.i, keepList = GAL.list;
+      const probe = document.createElement("input");
+      document.body.append(probe);
+      let removed = 0;
+      const realApply = galApply;
+      galApply = async () => { removed++; return 0; };
+      VW.open = true; VW.i = 0; GAL.list = [{ r:{ id:"vw-1" } }];
+      probe.focus();
+      probe.dispatchEvent(new KeyboardEvent("keydown",
+        { key:"Backspace", bubbles:true, cancelable:true }));
+      await new Promise(r => setTimeout(r, 0));
+      eq("Backspace in a text field does not remove the open photo", removed, 0);
+      /* The same key outside an input still removes, so the guard is not a mute. */
+      document.body.dispatchEvent(new KeyboardEvent("keydown",
+        { key:"Backspace", bubbles:true, cancelable:true }));
+      await new Promise(r => setTimeout(r, 0));
+      eq("but it still works when no field has focus", removed, 1);
+      galApply = realApply;
+      VW.open = keepOpen; VW.i = keepI; GAL.list = keepList;
+      probe.remove();
+    }
+
+    /* ---- clearing the conversation must be durable ----
+       restoreSave() returns early while RESTORE.pending is true, and that stays
+       true until the folder is reconnected. So clearing the chat before
+       reconnecting left the old conversation in localStorage, and it came back
+       on the next refresh. */
+    {
+      const keepTurns = CHAT.turns, keepPending = RESTORE.pending;
+      const keepLast = RESTORE.last, keepActive = window.__selftestActive;
+      const stored = localStorage.getItem(RESTORE.chatKey);
+      try {
+        window.__selftestActive = false;         // the saver is muted during tests
+        CHAT.turns = [{ q:"who is in this?", answer:"Anna", ids:["x"], at:1 }];
+        RESTORE.pending = false; RESTORE.last = "";
+        restoreSave(true);
+        ok("a conversation is saved for the next refresh",
+           (lsRead(RESTORE.chatKey) || []).length === 1);
+
+        /* The state the bug needed: a restore still pending. */
+        RESTORE.pending = true;
+        CHAT.turns = [];
+        restoreSave();                            // what the 1s timer would do
+        eq("the saver alone cannot clear it while a restore is pending",
+           (lsRead(RESTORE.chatKey) || []).length, 1);
+
+        /* Press the actual button. Calling restoreSave() here instead would
+           test restoreSave and pass even if Clear never called it, which is
+           precisely the mistake that let the first version of this test go
+           green against the unfixed code. */
+        CHAT.turns = [{ q:"who is in this?", answer:"Anna", ids:["x"], at:1 }];
+        RESTORE.pending = false; RESTORE.last = "";
+        restoreSave(true);
+        eq("a conversation is stored again", (lsRead(RESTORE.chatKey) || []).length, 1);
+        RESTORE.pending = true;                   // reconnect has not happened
+        $("#chatClear").click();
+        eq("Clear writes the empty conversation through",
+           (lsRead(RESTORE.chatKey) || []).length, 0);
+        eq("and the conversation really is empty", CHAT.turns.length, 0);
+      } finally {
+        CHAT.turns = keepTurns; RESTORE.pending = keepPending;
+        RESTORE.last = keepLast; window.__selftestActive = keepActive;
+        if (stored === null) localStorage.removeItem(RESTORE.chatKey);
+        else localStorage.setItem(RESTORE.chatKey, stored);
+      }
+    }
+
 
     /* ---- face vectors must append, and must not publish before committing ----
        Rewriting the whole file per face is quadratic: at 5,247 faces that is

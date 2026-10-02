@@ -7,6 +7,108 @@ async function consumerSelfTest(scratch){
     await deleteAllFaceData();
     S.faces.embedder = "arcface"; S.faces.threshold = 0.7;
 
+    /* ---- the Library must not write during a backup, and keys aimed at a form
+           control must not mutate the library ----
+       Both were real: galPersist appended to records.jsonl while a backup was
+       copying it, and the viewer's keydown handler had no input guard where its
+       sibling did, so Backspace on its own zoom slider removed the photo. */
+    {
+      /* A Library edit during maintenance must be refused, with a message. */
+      const keepRecords = IDX.records;
+      IDX.records = new Map([["lib-1", { id:"lib-1", name:"a.jpg", status:"ok" }]]);
+      libraryMaintenance++;
+      let refused = null;
+      try { await galPersist(["lib-1"], r => ({ ...r, favourite:true })); }
+      catch (e){ refused = errText(e); }
+      libraryMaintenance--;
+      ok("a Library edit during a backup is refused", !!refused, String(refused));
+      ok("and says what to wait for", /backup or restore/i.test(refused || ""), refused);
+      /* And allowed again once maintenance ends. */
+      let wrote = 0;
+      const realAppend = appendLines;
+      appendLines = async (n, lines) => { wrote += lines.length; };
+      await galPersist(["lib-1"], r => ({ ...r, favourite:true }));
+      appendLines = realAppend;
+      eq("and allowed once the backup has finished", wrote, 1);
+      IDX.records = keepRecords;
+    }
+
+    {
+      /* The viewer's keydown handler must ignore keys aimed at a form control.
+         Asserted on the source because the handler is bound to document at load
+         and cannot be re-entered; the guard is one line and its absence is the
+         whole bug. */
+      ok("vwRemove is still what Backspace reaches", /galApply/.test(String(vwRemove)));
+      /* Behavioural check: dispatch Backspace from inside an input while the
+         viewer believes it is open, and assert the library did not change. */
+      const keepOpen = VW.open, keepI = VW.i, keepList = GAL.list;
+      const probe = document.createElement("input");
+      document.body.append(probe);
+      let removed = 0;
+      const realApply = galApply;
+      galApply = async () => { removed++; return 0; };
+      VW.open = true; VW.i = 0; GAL.list = [{ r:{ id:"vw-1" } }];
+      probe.focus();
+      probe.dispatchEvent(new KeyboardEvent("keydown",
+        { key:"Backspace", bubbles:true, cancelable:true }));
+      await new Promise(r => setTimeout(r, 0));
+      eq("Backspace in a text field does not remove the open photo", removed, 0);
+      /* The same key outside an input still removes, so the guard is not a mute. */
+      document.body.dispatchEvent(new KeyboardEvent("keydown",
+        { key:"Backspace", bubbles:true, cancelable:true }));
+      await new Promise(r => setTimeout(r, 0));
+      eq("but it still works when no field has focus", removed, 1);
+      galApply = realApply;
+      VW.open = keepOpen; VW.i = keepI; GAL.list = keepList;
+      probe.remove();
+    }
+
+    /* ---- clearing the conversation must be durable ----
+       restoreSave() returns early while RESTORE.pending is true, and that stays
+       true until the folder is reconnected. So clearing the chat before
+       reconnecting left the old conversation in localStorage, and it came back
+       on the next refresh. */
+    {
+      const keepTurns = CHAT.turns, keepPending = RESTORE.pending;
+      const keepLast = RESTORE.last, keepActive = window.__selftestActive;
+      const stored = localStorage.getItem(RESTORE.chatKey);
+      try {
+        window.__selftestActive = false;         // the saver is muted during tests
+        CHAT.turns = [{ q:"who is in this?", answer:"Anna", ids:["x"], at:1 }];
+        RESTORE.pending = false; RESTORE.last = "";
+        restoreSave(true);
+        ok("a conversation is saved for the next refresh",
+           (lsRead(RESTORE.chatKey) || []).length === 1);
+
+        /* The state the bug needed: a restore still pending. */
+        RESTORE.pending = true;
+        CHAT.turns = [];
+        restoreSave();                            // what the 1s timer would do
+        eq("the saver alone cannot clear it while a restore is pending",
+           (lsRead(RESTORE.chatKey) || []).length, 1);
+
+        /* Press the actual button. Calling restoreSave() here instead would
+           test restoreSave and pass even if Clear never called it, which is
+           precisely the mistake that let the first version of this test go
+           green against the unfixed code. */
+        CHAT.turns = [{ q:"who is in this?", answer:"Anna", ids:["x"], at:1 }];
+        RESTORE.pending = false; RESTORE.last = "";
+        restoreSave(true);
+        eq("a conversation is stored again", (lsRead(RESTORE.chatKey) || []).length, 1);
+        RESTORE.pending = true;                   // reconnect has not happened
+        $("#chatClear").click();
+        eq("Clear writes the empty conversation through",
+           (lsRead(RESTORE.chatKey) || []).length, 0);
+        eq("and the conversation really is empty", CHAT.turns.length, 0);
+      } finally {
+        CHAT.turns = keepTurns; RESTORE.pending = keepPending;
+        RESTORE.last = keepLast; window.__selftestActive = keepActive;
+        if (stored === null) localStorage.removeItem(RESTORE.chatKey);
+        else localStorage.setItem(RESTORE.chatKey, stored);
+      }
+    }
+
+
     /* ---- face vectors must append, and must not publish before committing ----
        Rewriting the whole file per face is quadratic: at 5,247 faces that is
        ~5 MB per face, about 17 hours on a 430 KB/s share. And publishing memory
