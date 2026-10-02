@@ -63,6 +63,33 @@ async function consumerSelfTest(scratch){
       probe.remove();
     }
 
+    /* ---- a photo removed from the Library must not be scanned for faces ----
+       The hidden invariant spans six modules; the face plan was a seventh that
+       missed it, so a removed photo was still read and its faces still appeared
+       in People. */
+    {
+      const keepRecords = IDX.records, keepSource = S.faces.source;
+      const keepLoaded = FACES.loaded;
+      try {
+        S.faces.source = "thumbs";
+        IDX.records = new Map([
+          ["fp-keep",   { id:"fp-keep",   name:"a.jpg", status:"ok" }],
+          ["fp-hidden", { id:"fp-hidden", name:"b.jpg", status:"ok", hidden:true }],
+          ["fp-err",    { id:"fp-err",    name:"c.jpg", status:"error" }]
+        ]);
+        await deleteAllFaceData();
+        await loadFaces();
+        const pl = await planFaceScan();
+        const ids = pl.files.map(f => f.id).sort();
+        eq("a hidden photo is not queued for face detection", ids, ["fp-keep"]);
+        eq("and it is not counted as outstanding work", pl.total, 1);
+      } finally {
+        IDX.records = keepRecords; S.faces.source = keepSource;
+        FACES.loaded = keepLoaded;
+        try { await deleteAllFaceData(); } catch {}
+      }
+    }
+
     /* ---- clearing the conversation must be durable ----
        restoreSave() returns early while RESTORE.pending is true, and that stays
        true until the folder is reconnected. So clearing the chat before

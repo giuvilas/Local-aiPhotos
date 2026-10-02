@@ -679,8 +679,12 @@ async function planFaceScan(onPhase, signal){
   const done = new Set();
   for (const f of FACES.faces.values()) done.add(f.photo_id);
 
+  /* Hidden photos are excluded here too. The `hidden` invariant already spans
+     50-validate, 60-derived, 65-search, 82-timeline, 86-peopleui and 70-runner;
+     this plan was a seventh place that missed it, so a photo removed from the
+     Library would still be read and its faces would still turn up in People. */
   const everything = [...IDX.records.values()]
-    .filter(r => !r.deleted && r.status !== "error" && !r.probe);
+    .filter(r => !r.deleted && !r.hidden && r.status !== "error" && !r.probe);
   const outstanding = everything.filter(r => !done.has(r.id));
 
   /* THUMBNAILS NEED NO PHOTO FOLDER. They are keyed by record id and live in

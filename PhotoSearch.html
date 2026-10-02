@@ -5151,8 +5151,12 @@ async function planFaceScan(onPhase, signal){
   const done = new Set();
   for (const f of FACES.faces.values()) done.add(f.photo_id);
 
+  /* Hidden photos are excluded here too. The `hidden` invariant already spans
+     50-validate, 60-derived, 65-search, 82-timeline, 86-peopleui and 70-runner;
+     this plan was a seventh place that missed it, so a photo removed from the
+     Library would still be read and its faces would still turn up in People. */
   const everything = [...IDX.records.values()]
-    .filter(r => !r.deleted && r.status !== "error" && !r.probe);
+    .filter(r => !r.deleted && !r.hidden && r.status !== "error" && !r.probe);
   const outstanding = everything.filter(r => !done.has(r.id));
 
   /* THUMBNAILS NEED NO PHOTO FOLDER. They are keyed by record id and live in
@@ -13408,6 +13412,33 @@ async function consumerSelfTest(scratch){
       galApply = realApply;
       VW.open = keepOpen; VW.i = keepI; GAL.list = keepList;
       probe.remove();
+    }
+
+    /* ---- a photo removed from the Library must not be scanned for faces ----
+       The hidden invariant spans six modules; the face plan was a seventh that
+       missed it, so a removed photo was still read and its faces still appeared
+       in People. */
+    {
+      const keepRecords = IDX.records, keepSource = S.faces.source;
+      const keepLoaded = FACES.loaded;
+      try {
+        S.faces.source = "thumbs";
+        IDX.records = new Map([
+          ["fp-keep",   { id:"fp-keep",   name:"a.jpg", status:"ok" }],
+          ["fp-hidden", { id:"fp-hidden", name:"b.jpg", status:"ok", hidden:true }],
+          ["fp-err",    { id:"fp-err",    name:"c.jpg", status:"error" }]
+        ]);
+        await deleteAllFaceData();
+        await loadFaces();
+        const pl = await planFaceScan();
+        const ids = pl.files.map(f => f.id).sort();
+        eq("a hidden photo is not queued for face detection", ids, ["fp-keep"]);
+        eq("and it is not counted as outstanding work", pl.total, 1);
+      } finally {
+        IDX.records = keepRecords; S.faces.source = keepSource;
+        FACES.loaded = keepLoaded;
+        try { await deleteAllFaceData(); } catch {}
+      }
     }
 
     /* ---- clearing the conversation must be durable ----
