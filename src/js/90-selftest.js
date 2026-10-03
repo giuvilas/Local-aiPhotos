@@ -2490,6 +2490,61 @@ async function selfTest(){
       }
     }
 
+    /* ---- "only photos with people" ----
+       This decides which two thirds of the library a pass reads, and until now
+       it had neither a control nor a test. The dangerous direction is treating
+       absence of information as information: a missing people field would then
+       exclude every record written before that field existed, and the pass would
+       quietly find nobody at all. */
+    {
+      const keepRecs = new Map(IDX.records), keepLoaded = IDX.loaded;
+      const keepSrc = S.faces.source, keepPO = S.faces.peopleOnly;
+      try {
+        IDX.records.clear(); IDX.loaded = true;
+        const put = (id, people) => IDX.records.set(id, Object.assign(
+          { id, path:id + ".jpg", name:id + ".jpg" },
+          people === undefined ? {} : { people }));
+        put("pCount2", { count:2 });
+        put("pBucketSome", { count_bucket:"2-5" });
+        put("pCount0", { count:0 });
+        put("pBucket0", { count_bucket:"0" });
+        put("pBucketNone", { count_bucket:"none" });
+        put("pNoField");                       // never looked at for people
+        put("pEmpty", {});                     // looked at, said nothing
+        S.faces.source = "thumbs";             // no folder walk on this path
+
+        S.faces.peopleOnly = true;
+        let pl = await planFaceScan();
+        const ids = new Set(pl.files.map(f => f.id));
+        ok("photos with people counted in them are read",
+           ids.has("pCount2") && ids.has("pBucketSome"));
+        ok("a positive count of zero is skipped",
+           !ids.has("pCount0") && !ids.has("pBucket0") && !ids.has("pBucketNone"));
+        ok("a MISSING people field is not evidence of nobody", ids.has("pNoField"));
+        ok("nor is a people field that says nothing about it", ids.has("pEmpty"));
+        eq("four of the seven are read", pl.files.length, 4);
+
+        S.faces.peopleOnly = false;
+        pl = await planFaceScan();
+        eq("turning it off reads every photo", pl.files.length, 7);
+
+        /* A setting that changes the size of the job by a third cannot be
+           invisible: it was on by default with nothing on screen saying so. */
+        S.faces.peopleOnly = true;
+        $("#sFacePeopleOnly").checked = false;
+        $("#sFacePeopleOnly").dispatchEvent(new Event("change"));
+        eq("unticking the box turns it off", S.faces.peopleOnly, false);
+        $("#sFacePeopleOnly").checked = true;
+        $("#sFacePeopleOnly").dispatchEvent(new Event("change"));
+        eq("and ticking it turns it back on", S.faces.peopleOnly, true);
+      } finally {
+        IDX.records.clear();
+        for (const [k, v] of keepRecs) IDX.records.set(k, v);
+        IDX.loaded = keepLoaded;
+        S.faces.source = keepSrc; S.faces.peopleOnly = keepPO;
+      }
+    }
+
     /* ---- faces ----
        The engine is injected, so none of this needs a network or a model: the
        detector is a thin adapter and everything that can be wrong -- grouping,

@@ -590,6 +590,9 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
             <option value="originals">Originals — accurate, slow</option>
           </select>
         </label>
+        <label class="switch" title="Skip photos already described as having nobody in them"
+               style="margin-left:6px"><input type="checkbox" id="sFacePeopleOnly" checked>
+          <span class="swt"> Only photos with people</span></label>
         <label class="hint" style="display:flex;align-items:center;gap:7px;margin-left:6px">
           Grouping strictness
           <input type="range" id="sFaceTh" min="0.20" max="0.80" step="0.01" value="0.42"

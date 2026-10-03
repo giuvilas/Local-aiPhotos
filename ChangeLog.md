@@ -15,6 +15,8 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
+- [0.6.22 (2026-10-03)](#0622-2026-10-03)
+  - [Added](#added)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
   - [Fixed](#fixed)
   - [Changed](#changed)
@@ -23,11 +25,11 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.19 (2026-10-02)](#0619-2026-10-02)
   - [Changed](#changed-2)
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
-  - [Added](#added)
+  - [Added](#added-1)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
   - [Fixed](#fixed-1)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
-  - [Added](#added-1)
+  - [Added](#added-2)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
   - [Fixed](#fixed-2)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
@@ -35,63 +37,83 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.13 (2026-10-02)](#0613-2026-10-02)
   - [Changed](#changed-4)
 - [0.6.12 (2026-10-02)](#0612-2026-10-02)
-  - [Added](#added-2)
-- [0.6.11 (2026-10-02)](#0611-2026-10-02)
   - [Added](#added-3)
+- [0.6.11 (2026-10-02)](#0611-2026-10-02)
+  - [Added](#added-4)
 - [0.6.10 (2026-10-02)](#0610-2026-10-02)
   - [Changed](#changed-5)
 - [0.6.9 (2026-10-02)](#069-2026-10-02)
   - [Changed](#changed-6)
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
-  - [Added](#added-4)
+  - [Added](#added-5)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
   - [Fixed](#fixed-3)
 - [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-4)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
-  - [Added](#added-5)
-- [0.6.4 (2026-10-02)](#064-2026-10-02)
   - [Added](#added-6)
-- [0.6.3 (2026-10-01)](#063-2026-10-01)
+- [0.6.4 (2026-10-02)](#064-2026-10-02)
   - [Added](#added-7)
+- [0.6.3 (2026-10-01)](#063-2026-10-01)
+  - [Added](#added-8)
   - [Changed](#changed-7)
 - [0.6.2 (2026-10-01)](#062-2026-10-01)
-  - [Added](#added-8)
+  - [Added](#added-9)
   - [Changed](#changed-8)
 - [0.6.1 (2026-10-01)](#061-2026-10-01)
-  - [Added](#added-9)
+  - [Added](#added-10)
   - [Changed](#changed-9)
 - [0.6.0 (2026-10-01)](#060-2026-10-01)
-  - [Added](#added-10)
+  - [Added](#added-11)
   - [Changed](#changed-10)
 - [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-11)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
   - [Fixed](#fixed-5)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
-  - [Added](#added-11)
+  - [Added](#added-12)
   - [Changed](#changed-12)
 - [0.5.1 (2026-10-01)](#051-2026-10-01)
   - [Changed](#changed-13)
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
-  - [Added](#added-12)
+  - [Added](#added-13)
   - [Changed](#changed-14)
   - [Fixed](#fixed-6)
 - [0.4.0 (2026-10-01)](#040-2026-10-01)
-  - [Added](#added-13)
+  - [Added](#added-14)
   - [Changed](#changed-15)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
-  - [Added](#added-14)
+  - [Added](#added-15)
   - [Changed](#changed-16)
   - [Fixed](#fixed-7)
 - [0.2.0 (2026-09-29)](#020-2026-09-29)
-  - [Added](#added-15)
+  - [Added](#added-16)
   - [Changed](#changed-17)
   - [Fixed](#fixed-8)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
-  - [Added](#added-16)
+  - [Added](#added-17)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.22 (2026-10-03)
+
+**Summary:** the setting that decides which two thirds of the library a face pass reads now has
+a control, and a test.
+
+### Added
+
+- **Only photos with people** on the People tab. It was already on by default and already
+  changed the size of a face pass by a third — 4,203 of 7,039 photos here hold people, 8.9 GB
+  against 14.7 — but nothing on screen said so, and the documentation claimed a control that
+  did not exist.
+- Tests for that filter, which had none. It skips a photo only on **positive evidence of
+  nobody**: a counted zero, or a count bucket of "0"/"none". A missing `people` field is not
+  evidence, and neither is one that says nothing about the count — treating either as evidence
+  would silently exclude every record written before the field existed, and the pass would find
+  nobody at all.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.21 (2026-10-03)
 
