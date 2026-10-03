@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.20";
+const APP_VERSION = "0.6.21";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -604,8 +604,14 @@ async function ensureIndexConnected(){
    Deliberately minimal. Earlier versions added a busy flag, a button-disable
    and a watchdog; the disable let macOS dismiss the dialog and left the button
    stuck. One direct call in the click handler is what works. */
-async function pickDirectory(){
-  return window.showDirectoryPicker({ mode:"readwrite" });
+/* The dialog opens on the last folder Chrome handed out, and that is shared by
+   every picker on the page. For this app the last one is on the photo share, so
+   asking where to put the INDEX opens a dialog that must first list a sleeping
+   SMB mount — which can take as long as the share does, with no sign on the
+   page that anything was asked for. An "id" gives each picker its own memory,
+   and startIn says where to begin before there is one. */
+async function pickDirectory(opts){
+  return window.showDirectoryPicker({ mode:"readwrite", ...(opts || {}) });
 }
 
 /* Chrome keeps a per-document "a file picker is open" flag. If a dialog is ever
@@ -616,13 +622,14 @@ async function pickDirectory(){
 function isPickerStuck(e){
   return !!e && /file picker already active/i.test(String(e.message || e));
 }
-function offerPickerReset(){
-  const w = $("#browserWarn");
+function offerPickerReset(host){
+  const w = host || $("#browserWarn");
   w.hidden = false; w.innerHTML = "";
   w.append(el("b", null, "The folder chooser is stuck. "));
   w.append(document.createTextNode(
     "Chrome thinks a file dialog is still open on this page. Reloading clears it "
-    + "— your folders and settings are remembered."));
+    + "— your folders and settings are remembered. Dragging the folder from Finder "
+    + "onto the button works without any dialog."));
   const b = el("button", "btn");
   b.textContent = "Reload now";
   b.style.marginLeft = "10px";
@@ -634,6 +641,50 @@ function offerPickerReset(){
   b2.onclick = () => { w.hidden = true; };
   w.append(b2);
   w.scrollIntoView({ block:"nearest" });
+}
+
+/* A refused picker and a picker that simply never appears are indistinguishable
+   from the page: the button looks dead either way, which is exactly how it was
+   reported. So the click says what it asked for, and if no dialog has been
+   answered within a few seconds it explains both ways out. The wait is a
+   variable so the suite can drive it without sleeping for seconds. */
+let PICKER_NOTE_MS = 4000;
+function pickerWaiting(host){
+  if (!host) return;
+  host.hidden = false; host.innerHTML = "";
+  host.textContent = "Asking Chrome for the folder chooser\u2026 pick a folder, or press Escape.";
+}
+function pickerQuiet(host){
+  if (!host) return;
+  host.hidden = false; host.innerHTML = "";
+  host.append(el("b", null, "No folder chooser appeared. "));
+  host.append(document.createTextNode(
+    "Chrome can refuse the dialog for the life of a page, with no error. Reloading clears "
+    + "that, or drag the folder from Finder straight onto the button \u2014 that needs no dialog."));
+  const b = el("button", "btn");
+  b.textContent = "Reload now";
+  b.style.marginLeft = "10px";
+  b.onclick = () => location.reload();
+  host.append(b);
+}
+function pickerDone(host){
+  if (!host) return;
+  host.hidden = true; host.innerHTML = "";
+}
+/* Resolves to a handle, or null when the person cancelled. Throws anything else
+   on, so the caller still decides how to report it. */
+async function pickDirectoryVisible(host, opts){
+  pickerWaiting(host);
+  const t = setTimeout(() => pickerQuiet(host), PICKER_NOTE_MS);
+  try {
+    const h = await pickDirectory(opts);
+    clearTimeout(t); pickerDone(host);
+    return h || null;
+  } catch (e){
+    clearTimeout(t);
+    if (e && e.name === "AbortError"){ pickerDone(host); return null; }
+    throw e;
+  }
 }
 
 /* Dragging a folder from Finder yields a directory handle directly, with no

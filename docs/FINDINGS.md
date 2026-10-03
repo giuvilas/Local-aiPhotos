@@ -29,9 +29,11 @@ runtime, `qwen3.5-9b-mlx` (4-bit), and `text-embedding-nomic-embed-text-v1.5`.
 - [13. Resolution matters, but bigger thumbnails are the wrong lever](#13-resolution-matters-but-bigger-thumbnails-are-the-wrong-lever)
 - [14. Changing what a setting means needs a migration, like changing its name](#14-changing-what-a-setting-means-needs-a-migration-like-changing-its-name)
 - [15. Writing the whole file every time is quadratic, and the symptom is silence](#15-writing-the-whole-file-every-time-is-quadratic-and-the-symptom-is-silence)
-- [16. Index size](#16-index-size)
-- [16. Hiding a photo is not deleting it](#16-hiding-a-photo-is-not-deleting-it)
-- [17. Things outlive the list that created them](#17-things-outlive-the-list-that-created-them)
+- [16. A deadline sized from a warm measurement fires on a sleeping drive](#16-a-deadline-sized-from-a-warm-measurement-fires-on-a-sleeping-drive)
+- [17. One write per item is not a design on slow storage](#17-one-write-per-item-is-not-a-design-on-slow-storage)
+- [18. Index size](#18-index-size)
+- [19. Hiding a photo is not deleting it](#19-hiding-a-photo-is-not-deleting-it)
+- [20. Things outlive the list that created them](#20-things-outlive-the-list-that-created-them)
 - [Reproducing any of this](#reproducing-any-of-this)
 <!-- index:end -->
 
@@ -572,6 +574,8 @@ minutes now re-emits itself with the time elapsed and the time allowed, because 
 one unchanging label is indistinguishable from being wedged, and that ambiguity has cost
 more time in this project than any single defect.
 
+[↑ Back to Index](#index)
+
 ---
 
 ## 17. One write per item is not a design on slow storage
@@ -618,6 +622,8 @@ becomes a way to lose a library.
 | slowest single file | 58 s |
 | 8.9 GB of reading | ~3.2 h |
 | write cycles per photo, before / after | 3 / 0.04 |
+
+[↑ Back to Index](#index)
 
 ---
 

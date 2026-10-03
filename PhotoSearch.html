@@ -658,9 +658,11 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <button class="btn sec" id="btnReconnect" disabled>Reconnect last folder</button>
         <button class="btn sec" id="btnWriteTest" disabled>Test write to .photoindex/</button>
       </div>
+      <div id="pickNote" class="note" hidden></div>
       <div class="hint">By default the index lives in <code>.photoindex/</code> inside the folder
         you pick. For a NAS library, keep it on this Mac instead: writes stay off the share and
-        search still works when the NAS is asleep.</div>
+        search still works when the NAS is asleep. You can also drag a folder from Finder onto
+        either button, which needs no dialog at all.</div>
       <div class="row" style="margin-top:12px">
         <div style="flex:1 1 260px"><label for="sIndexMode">Where to save the index (the "DB")</label>
           <select id="sIndexMode">
@@ -672,6 +674,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <button class="btn sec" id="btnIndexMove">Move the index&hellip;</button>
       </div>
       <div id="idxNow" class="idxNow"></div>
+      <div id="idxPickNote" class="note" hidden></div>
       <div class="row" style="margin-top:10px">
         <div style="flex:1 1 240px"><label for="sScope">Scan scope (optional)</label>
           <select id="sScope"><option value="">Whole library</option></select></div>
@@ -832,7 +835,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.20";
+const APP_VERSION = "0.6.21";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -1436,8 +1439,14 @@ async function ensureIndexConnected(){
    Deliberately minimal. Earlier versions added a busy flag, a button-disable
    and a watchdog; the disable let macOS dismiss the dialog and left the button
    stuck. One direct call in the click handler is what works. */
-async function pickDirectory(){
-  return window.showDirectoryPicker({ mode:"readwrite" });
+/* The dialog opens on the last folder Chrome handed out, and that is shared by
+   every picker on the page. For this app the last one is on the photo share, so
+   asking where to put the INDEX opens a dialog that must first list a sleeping
+   SMB mount — which can take as long as the share does, with no sign on the
+   page that anything was asked for. An "id" gives each picker its own memory,
+   and startIn says where to begin before there is one. */
+async function pickDirectory(opts){
+  return window.showDirectoryPicker({ mode:"readwrite", ...(opts || {}) });
 }
 
 /* Chrome keeps a per-document "a file picker is open" flag. If a dialog is ever
@@ -1448,13 +1457,14 @@ async function pickDirectory(){
 function isPickerStuck(e){
   return !!e && /file picker already active/i.test(String(e.message || e));
 }
-function offerPickerReset(){
-  const w = $("#browserWarn");
+function offerPickerReset(host){
+  const w = host || $("#browserWarn");
   w.hidden = false; w.innerHTML = "";
   w.append(el("b", null, "The folder chooser is stuck. "));
   w.append(document.createTextNode(
     "Chrome thinks a file dialog is still open on this page. Reloading clears it "
-    + "— your folders and settings are remembered."));
+    + "— your folders and settings are remembered. Dragging the folder from Finder "
+    + "onto the button works without any dialog."));
   const b = el("button", "btn");
   b.textContent = "Reload now";
   b.style.marginLeft = "10px";
@@ -1466,6 +1476,50 @@ function offerPickerReset(){
   b2.onclick = () => { w.hidden = true; };
   w.append(b2);
   w.scrollIntoView({ block:"nearest" });
+}
+
+/* A refused picker and a picker that simply never appears are indistinguishable
+   from the page: the button looks dead either way, which is exactly how it was
+   reported. So the click says what it asked for, and if no dialog has been
+   answered within a few seconds it explains both ways out. The wait is a
+   variable so the suite can drive it without sleeping for seconds. */
+let PICKER_NOTE_MS = 4000;
+function pickerWaiting(host){
+  if (!host) return;
+  host.hidden = false; host.innerHTML = "";
+  host.textContent = "Asking Chrome for the folder chooser\u2026 pick a folder, or press Escape.";
+}
+function pickerQuiet(host){
+  if (!host) return;
+  host.hidden = false; host.innerHTML = "";
+  host.append(el("b", null, "No folder chooser appeared. "));
+  host.append(document.createTextNode(
+    "Chrome can refuse the dialog for the life of a page, with no error. Reloading clears "
+    + "that, or drag the folder from Finder straight onto the button \u2014 that needs no dialog."));
+  const b = el("button", "btn");
+  b.textContent = "Reload now";
+  b.style.marginLeft = "10px";
+  b.onclick = () => location.reload();
+  host.append(b);
+}
+function pickerDone(host){
+  if (!host) return;
+  host.hidden = true; host.innerHTML = "";
+}
+/* Resolves to a handle, or null when the person cancelled. Throws anything else
+   on, so the caller still decides how to report it. */
+async function pickDirectoryVisible(host, opts){
+  pickerWaiting(host);
+  const t = setTimeout(() => pickerQuiet(host), PICKER_NOTE_MS);
+  try {
+    const h = await pickDirectory(opts);
+    clearTimeout(t); pickerDone(host);
+    return h || null;
+  } catch (e){
+    clearTimeout(t);
+    if (e && e.name === "AbortError"){ pickerDone(host); return null; }
+    throw e;
+  }
 }
 
 /* Dragging a folder from Finder yields a directory handle directly, with no
@@ -5806,11 +5860,13 @@ $("#sScope").onchange = async () => {
   await refreshPlan();
 };
 $("#btnIndexDir").onclick = async () => {
+  const note = $("#idxPickNote");
   let h;
-  try { h = await pickDirectory(); }
+  /* The report was "nothing happens": report where the click landed instead. */
+  try { h = await pickDirectoryVisible(note, { id:"psIndex", startIn:"documents" }); }
   catch (e){
-    if (e.name === "AbortError") return;
-    if (isPickerStuck(e)){ offerPickerReset(); return; }
+    if (isPickerStuck(e)){ offerPickerReset(note); return; }
+    note.hidden = false; note.textContent = humanError(e);
     toast(humanError(e));
     return;
   }
@@ -5825,11 +5881,11 @@ $("#btnIndexDir").onclick = async () => {
 };
 
 $("#btnPick").onclick = async () => {
+  const note = $("#pickNote");
   let h;
-  try { h = await pickDirectory(); }
+  try { h = await pickDirectoryVisible(note, { id:"psPhotos" }); }
   catch (e){
-    if (e.name === "AbortError") return;
-    if (isPickerStuck(e)){ offerPickerReset(); return; }
+    if (isPickerStuck(e)){ offerPickerReset(note); return; }
     renderChecks($("#fsOut"), [{ status:"err", title:"Could not open folder",
       detail:humanError(e) }]);
     return;
@@ -11184,6 +11240,19 @@ async function selfTest(){
       eq("it is called exactly once", calls, 1);
       eq("with read-write access and nothing else", JSON.stringify(opts),
          JSON.stringify({ mode:"readwrite" }));
+      /* The two pickers must not share Chrome's "last folder": the index one
+         would then open on the photo share and wait for it to wake up. */
+      await pickDirectory({ id:"psIndex", startIn:"documents" });
+      eq("read-write access survives a caller's options", opts.mode, "readwrite");
+      eq("the index picker starts away from the share", opts.startIn, "documents");
+      /* Cancel, so pressing the real buttons records what they asked for
+         without handing the app a fake folder. */
+      window.showDirectoryPicker = o => { opts = o; return Promise.reject(
+        Object.assign(new Error("The user aborted a request."), { name:"AbortError" })); };
+      $("#btnIndexDir").click(); await new Promise(r => setTimeout(r, 10));
+      eq("the index button asks for its own remembered folder", opts.id, "psIndex");
+      $("#btnPick").click(); await new Promise(r => setTimeout(r, 10));
+      eq("the photo button has a different one", opts.id, "psPhotos");
       window.showDirectoryPicker = () => Promise.reject(
         Object.assign(new Error("The user aborted a request."), { name:"AbortError" }));
       let bubbled = false;
@@ -11201,6 +11270,44 @@ async function selfTest(){
          [...$("#browserWarn").querySelectorAll("button")]
            .some(b => /Reload/.test(b.textContent)));
       $("#browserWarn").hidden = true; $("#browserWarn").innerHTML = "";
+
+      /* The report was literally "nothing happens". A chooser that never shows
+         and one Chrome refuses look identical from here, so both have to speak
+         where the click landed. */
+      {
+        const realNoteMs = PICKER_NOTE_MS;
+        PICKER_NOTE_MS = 20;
+        const note = $("#idxPickNote");
+        window.showDirectoryPicker = () => new Promise(() => {});      // never settles
+        $("#btnIndexDir").click();
+        await new Promise(r => setTimeout(r, 0));
+        ok("the click says the chooser was asked for",
+           !note.hidden && /chooser/i.test(note.textContent));
+        await new Promise(r => setTimeout(r, 120));
+        ok("a chooser that never appears is explained at the button",
+           !note.hidden && /No folder chooser appeared/.test(note.textContent));
+        ok("and offers the reload that is the only real remedy",
+           [...note.querySelectorAll("button")].some(b => /Reload/.test(b.textContent)));
+
+        window.showDirectoryPicker = () => Promise.reject(new Error(
+          "Failed to execute 'showDirectoryPicker' on 'Window': File picker already active."));
+        $("#btnIndexDir").click();
+        await new Promise(r => setTimeout(r, 40));
+        ok("a refused chooser is explained at the button too",
+           !note.hidden && /stuck/i.test(note.textContent));
+        ok("not only in a banner at the top of the page the user cannot see",
+           $("#browserWarn").hidden === true);
+
+        window.showDirectoryPicker = () => Promise.reject(
+          Object.assign(new Error("The user aborted a request."), { name:"AbortError" }));
+        $("#btnIndexDir").click();
+        await new Promise(r => setTimeout(r, 40));
+        ok("cancelling leaves no note behind", note.hidden === true);
+
+        PICKER_NOTE_MS = realNoteMs;
+        note.hidden = true; note.innerHTML = "";
+        window.scrollTo(0, 0);        // the note scrolled itself into view
+      }
       window.showDirectoryPicker = realPicker;
 
       // dragging a folder still works as an extra route
@@ -12609,6 +12716,9 @@ async function selfTest(){
 
       sec.hidden = false;
       try {
+        /* Windowing is relative to the viewport, so an earlier test that
+           scrolled the page must not be able to decide this one. */
+        window.scrollTo(0, 0);
         galClear(); GAL.cell = 0; galLayout();
         ok("the grid is laid out in columns", GAL.cols > 0 && GAL.cell > 0,
            GAL.cols + " cols, " + GAL.cell + "px");

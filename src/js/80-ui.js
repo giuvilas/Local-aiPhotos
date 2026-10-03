@@ -314,11 +314,13 @@ $("#sScope").onchange = async () => {
   await refreshPlan();
 };
 $("#btnIndexDir").onclick = async () => {
+  const note = $("#idxPickNote");
   let h;
-  try { h = await pickDirectory(); }
+  /* The report was "nothing happens": report where the click landed instead. */
+  try { h = await pickDirectoryVisible(note, { id:"psIndex", startIn:"documents" }); }
   catch (e){
-    if (e.name === "AbortError") return;
-    if (isPickerStuck(e)){ offerPickerReset(); return; }
+    if (isPickerStuck(e)){ offerPickerReset(note); return; }
+    note.hidden = false; note.textContent = humanError(e);
     toast(humanError(e));
     return;
   }
@@ -333,11 +335,11 @@ $("#btnIndexDir").onclick = async () => {
 };
 
 $("#btnPick").onclick = async () => {
+  const note = $("#pickNote");
   let h;
-  try { h = await pickDirectory(); }
+  try { h = await pickDirectoryVisible(note, { id:"psPhotos" }); }
   catch (e){
-    if (e.name === "AbortError") return;
-    if (isPickerStuck(e)){ offerPickerReset(); return; }
+    if (isPickerStuck(e)){ offerPickerReset(note); return; }
     renderChecks($("#fsOut"), [{ status:"err", title:"Could not open folder",
       detail:humanError(e) }]);
     return;

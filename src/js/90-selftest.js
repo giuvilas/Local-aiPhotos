@@ -583,6 +583,19 @@ async function selfTest(){
       eq("it is called exactly once", calls, 1);
       eq("with read-write access and nothing else", JSON.stringify(opts),
          JSON.stringify({ mode:"readwrite" }));
+      /* The two pickers must not share Chrome's "last folder": the index one
+         would then open on the photo share and wait for it to wake up. */
+      await pickDirectory({ id:"psIndex", startIn:"documents" });
+      eq("read-write access survives a caller's options", opts.mode, "readwrite");
+      eq("the index picker starts away from the share", opts.startIn, "documents");
+      /* Cancel, so pressing the real buttons records what they asked for
+         without handing the app a fake folder. */
+      window.showDirectoryPicker = o => { opts = o; return Promise.reject(
+        Object.assign(new Error("The user aborted a request."), { name:"AbortError" })); };
+      $("#btnIndexDir").click(); await new Promise(r => setTimeout(r, 10));
+      eq("the index button asks for its own remembered folder", opts.id, "psIndex");
+      $("#btnPick").click(); await new Promise(r => setTimeout(r, 10));
+      eq("the photo button has a different one", opts.id, "psPhotos");
       window.showDirectoryPicker = () => Promise.reject(
         Object.assign(new Error("The user aborted a request."), { name:"AbortError" }));
       let bubbled = false;
@@ -600,6 +613,44 @@ async function selfTest(){
          [...$("#browserWarn").querySelectorAll("button")]
            .some(b => /Reload/.test(b.textContent)));
       $("#browserWarn").hidden = true; $("#browserWarn").innerHTML = "";
+
+      /* The report was literally "nothing happens". A chooser that never shows
+         and one Chrome refuses look identical from here, so both have to speak
+         where the click landed. */
+      {
+        const realNoteMs = PICKER_NOTE_MS;
+        PICKER_NOTE_MS = 20;
+        const note = $("#idxPickNote");
+        window.showDirectoryPicker = () => new Promise(() => {});      // never settles
+        $("#btnIndexDir").click();
+        await new Promise(r => setTimeout(r, 0));
+        ok("the click says the chooser was asked for",
+           !note.hidden && /chooser/i.test(note.textContent));
+        await new Promise(r => setTimeout(r, 120));
+        ok("a chooser that never appears is explained at the button",
+           !note.hidden && /No folder chooser appeared/.test(note.textContent));
+        ok("and offers the reload that is the only real remedy",
+           [...note.querySelectorAll("button")].some(b => /Reload/.test(b.textContent)));
+
+        window.showDirectoryPicker = () => Promise.reject(new Error(
+          "Failed to execute 'showDirectoryPicker' on 'Window': File picker already active."));
+        $("#btnIndexDir").click();
+        await new Promise(r => setTimeout(r, 40));
+        ok("a refused chooser is explained at the button too",
+           !note.hidden && /stuck/i.test(note.textContent));
+        ok("not only in a banner at the top of the page the user cannot see",
+           $("#browserWarn").hidden === true);
+
+        window.showDirectoryPicker = () => Promise.reject(
+          Object.assign(new Error("The user aborted a request."), { name:"AbortError" }));
+        $("#btnIndexDir").click();
+        await new Promise(r => setTimeout(r, 40));
+        ok("cancelling leaves no note behind", note.hidden === true);
+
+        PICKER_NOTE_MS = realNoteMs;
+        note.hidden = true; note.innerHTML = "";
+        window.scrollTo(0, 0);        // the note scrolled itself into view
+      }
       window.showDirectoryPicker = realPicker;
 
       // dragging a folder still works as an extra route
@@ -2008,6 +2059,9 @@ async function selfTest(){
 
       sec.hidden = false;
       try {
+        /* Windowing is relative to the viewport, so an earlier test that
+           scrolled the page must not be able to decide this one. */
+        window.scrollTo(0, 0);
         galClear(); GAL.cell = 0; galLayout();
         ok("the grid is laid out in columns", GAL.cols > 0 && GAL.cell > 0,
            GAL.cols + " cols, " + GAL.cell + "px");

@@ -22,7 +22,6 @@ anything non-trivial. For *measurements* behind these decisions, see
 - [Scanning one photo](#scanning-one-photo)
 - [Search](#search)
 - [The chat agent](#the-chat-agent)
-- [The chat agent](#the-chat-agent-1)
 - [Browsing: Library and Timeline](#browsing-library-and-timeline)
   - [Library](#library)
   - [The search field](#the-search-field)
@@ -34,7 +33,7 @@ anything non-trivial. For *measurements* behind these decisions, see
 - [The model server](#the-model-server)
 - [Safety properties](#safety-properties)
 - [Storage is assumed to be slow and unreliable](#storage-is-assumed-to-be-slow-and-unreliable)
-- [Faces](#faces-1)
+- [Surviving a refresh](#surviving-a-refresh)
 - [Known gaps](#known-gaps)
 <!-- index:end -->
 

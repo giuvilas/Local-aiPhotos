@@ -658,9 +658,11 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <button class="btn sec" id="btnReconnect" disabled>Reconnect last folder</button>
         <button class="btn sec" id="btnWriteTest" disabled>Test write to .photoindex/</button>
       </div>
+      <div id="pickNote" class="note" hidden></div>
       <div class="hint">By default the index lives in <code>.photoindex/</code> inside the folder
         you pick. For a NAS library, keep it on this Mac instead: writes stay off the share and
-        search still works when the NAS is asleep.</div>
+        search still works when the NAS is asleep. You can also drag a folder from Finder onto
+        either button, which needs no dialog at all.</div>
       <div class="row" style="margin-top:12px">
         <div style="flex:1 1 260px"><label for="sIndexMode">Where to save the index (the "DB")</label>
           <select id="sIndexMode">
@@ -672,6 +674,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <button class="btn sec" id="btnIndexMove">Move the index&hellip;</button>
       </div>
       <div id="idxNow" class="idxNow"></div>
+      <div id="idxPickNote" class="note" hidden></div>
       <div class="row" style="margin-top:10px">
         <div style="flex:1 1 240px"><label for="sScope">Scan scope (optional)</label>
           <select id="sScope"><option value="">Whole library</option></select></div>
