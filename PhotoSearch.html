@@ -604,6 +604,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <div id="facesStats" class="mono" style="margin-top:9px;font-size:13px"></div>
         <div id="facesEta" class="hint"></div>
         <div id="facesNow" class="hint" style="word-break:break-all"></div>
+        <div id="facesErr" class="note" hidden style="margin-top:9px"></div>
         <div class="row" style="margin-top:9px">
           <button class="btn sec" id="btnFacesPause">Pause</button>
           <button class="btn sec" id="btnFacesStop">Stop</button>
@@ -2296,25 +2297,41 @@ function imgWorker(){
     /* ErrorEvent.message is routinely empty for worker failures, and the old
        worker kept running with its blob URL leaked. */
     const why = (e && e.message) || (e && e.filename) || "no detail available";
-    for (const [, j] of wJobs){ clearTimeout(j.timer); j.rej(new Error("image worker crashed: " + why)); }
+    /* One crash used to reject EVERY job in flight. With several decodes running
+       at once that turns a single failure into a handful, and if the crash
+       repeats the run fails on almost every photo while the cause is one photo
+       the worker could not handle. Give each in-flight job one more attempt on a
+       fresh worker, and only then give up on it. */
+    const stranded = [...wJobs.values()];
     wJobs.clear();
     try { WORKER.terminate(); } catch {}
     try { if (WORKER_URL) URL.revokeObjectURL(WORKER_URL); } catch {}
     WORKER = null; WORKER_URL = null;
+    for (const j of stranded){
+      clearTimeout(j.timer);
+      if (j.retried) j.rej(new Error("image worker crashed: " + why));
+      else { j.retried = true; j.again(); }
+    }
   };
   return WORKER;
 }
 function processImage(file, kind, opts){
   opts = opts || {};
-  const id = ++wSeq;
   return new Promise((res, rej) => {
-    const timer = setTimeout(() => {
-      if (wJobs.has(id)){ wJobs.delete(id); rej(new Error("decode timeout after 120s")); }
-    }, 120000);
-    wJobs.set(id, { res, rej, timer });
-    imgWorker().postMessage({ id, file, kind,
-      bigPx: opts.bigPx || S.scan.bigPx, thumbPx: opts.thumbPx || S.scan.thumbPx,
-      thumbQ: S.scan.thumbQ, thumbOnly: !!opts.thumbOnly });
+    const send = () => {
+      const id = ++wSeq;
+      const timer = setTimeout(() => {
+        if (wJobs.has(id)){ wJobs.delete(id); rej(new Error("decode timeout after 120s")); }
+      }, 120000);
+      /* `again` lets the crash handler resend this exact job on a new worker. */
+      wJobs.set(id, { res, rej, timer, again: send, retried: job.retried });
+      job = wJobs.get(id);
+      imgWorker().postMessage({ id, file, kind,
+        bigPx: opts.bigPx || S.scan.bigPx, thumbPx: opts.thumbPx || S.scan.thumbPx,
+        thumbQ: S.scan.thumbQ, thumbOnly: !!opts.thumbOnly });
+    };
+    let job = { retried: false };
+    send();
   });
 }
 
@@ -6052,6 +6069,25 @@ function updateProgress(){
     if (fe) fe.textContent = (RUN.active && avg && left)
       ? "About " + fmtDur(left * avg / conc) + " remaining."
       : (RUN.active ? "Estimating…" : "Finished.");
+    /* The error list renders into the Scan tab, which is hidden while this one
+       is open. A run can therefore fail on almost every photo and show nothing
+       but a rising count with no reason -- which is exactly what happened on a
+       6,621-photo pass that failed 1,565 of its first 1,575. */
+    const box = $("#facesErr");
+    if (box){
+      if (!RUN.errors.length) box.hidden = true;
+      else {
+        box.hidden = false;
+        box.textContent = "";
+        const n = RUN.errorCount || RUN.errors.length;
+        box.append(el("b", null, n + (n === 1 ? " photo could" : " photos could") + " not be read. "));
+        box.append(document.createTextNode("First: " + RUN.errors[0].error.slice(0, 220)));
+        if (n > 20 && RUN.done && n / RUN.done > 0.5)
+          box.append(Object.assign(el("div"), { style:"margin-top:6px", textContent:
+            "That is most of them, so the cause is almost certainly the same every "
+            + "time rather than the photos. Stop, and fix the cause." }));
+      }
+    }
   }
 }
 let curUrl = null, curSeq = 0;
@@ -13486,6 +13522,37 @@ async function consumerSelfTest(scratch){
       galApply = realApply;
       VW.open = keepOpen; VW.i = keepI; GAL.list = keepList;
       probe.remove();
+    }
+
+    /* ---- a face run must show WHY it is failing, on the tab it was started
+           from, and a worker crash must not strand every job in flight ----
+       A 6,621-photo pass failed 1,565 of its first 1,575 and showed only a
+       rising count, because the error list renders into the hidden Scan tab. */
+    {
+      const keep = { mode:RUN.mode, active:RUN.active, done:RUN.done,
+                     total:RUN.total, errors:RUN.errors, count:RUN.errorCount,
+                     times:RUN.times };
+      try {
+        RUN.mode = "faces"; RUN.active = true;
+        RUN.done = 1575; RUN.total = 6621; RUN.times = [13.27];
+        RUN.errors = [{ path:"IMG_7446.JPEG", error:"image worker crashed: no detail available" }];
+        RUN.errorCount = 1565;
+        updateProgress();
+        const box = $("#facesErr");
+        ok("the People tab shows that photos failed", box.hidden === false);
+        ok("and the actual reason, not just a count",
+           /image worker crashed/.test(box.textContent), box.textContent.slice(0, 80));
+        ok("and says so when it is most of them, not a few",
+           /cause is almost certainly the same/.test(box.textContent));
+
+        RUN.errors = []; RUN.errorCount = 0;
+        updateProgress();
+        ok("and nothing is shown when nothing failed", $("#facesErr").hidden === true);
+      } finally {
+        RUN.mode = keep.mode; RUN.active = keep.active; RUN.done = keep.done;
+        RUN.total = keep.total; RUN.errors = keep.errors;
+        RUN.errorCount = keep.count; RUN.times = keep.times;
+      }
     }
 
     /* ---- a photo removed from the Library must not be scanned for faces ----

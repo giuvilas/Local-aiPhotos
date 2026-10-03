@@ -63,6 +63,37 @@ async function consumerSelfTest(scratch){
       probe.remove();
     }
 
+    /* ---- a face run must show WHY it is failing, on the tab it was started
+           from, and a worker crash must not strand every job in flight ----
+       A 6,621-photo pass failed 1,565 of its first 1,575 and showed only a
+       rising count, because the error list renders into the hidden Scan tab. */
+    {
+      const keep = { mode:RUN.mode, active:RUN.active, done:RUN.done,
+                     total:RUN.total, errors:RUN.errors, count:RUN.errorCount,
+                     times:RUN.times };
+      try {
+        RUN.mode = "faces"; RUN.active = true;
+        RUN.done = 1575; RUN.total = 6621; RUN.times = [13.27];
+        RUN.errors = [{ path:"IMG_7446.JPEG", error:"image worker crashed: no detail available" }];
+        RUN.errorCount = 1565;
+        updateProgress();
+        const box = $("#facesErr");
+        ok("the People tab shows that photos failed", box.hidden === false);
+        ok("and the actual reason, not just a count",
+           /image worker crashed/.test(box.textContent), box.textContent.slice(0, 80));
+        ok("and says so when it is most of them, not a few",
+           /cause is almost certainly the same/.test(box.textContent));
+
+        RUN.errors = []; RUN.errorCount = 0;
+        updateProgress();
+        ok("and nothing is shown when nothing failed", $("#facesErr").hidden === true);
+      } finally {
+        RUN.mode = keep.mode; RUN.active = keep.active; RUN.done = keep.done;
+        RUN.total = keep.total; RUN.errors = keep.errors;
+        RUN.errorCount = keep.count; RUN.times = keep.times;
+      }
+    }
+
     /* ---- a photo removed from the Library must not be scanned for faces ----
        The hidden invariant spans six modules; the face plan was a seventh that
        missed it, so a removed photo was still read and its faces still appeared

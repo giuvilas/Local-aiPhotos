@@ -226,24 +226,40 @@ function imgWorker(){
     /* ErrorEvent.message is routinely empty for worker failures, and the old
        worker kept running with its blob URL leaked. */
     const why = (e && e.message) || (e && e.filename) || "no detail available";
-    for (const [, j] of wJobs){ clearTimeout(j.timer); j.rej(new Error("image worker crashed: " + why)); }
+    /* One crash used to reject EVERY job in flight. With several decodes running
+       at once that turns a single failure into a handful, and if the crash
+       repeats the run fails on almost every photo while the cause is one photo
+       the worker could not handle. Give each in-flight job one more attempt on a
+       fresh worker, and only then give up on it. */
+    const stranded = [...wJobs.values()];
     wJobs.clear();
     try { WORKER.terminate(); } catch {}
     try { if (WORKER_URL) URL.revokeObjectURL(WORKER_URL); } catch {}
     WORKER = null; WORKER_URL = null;
+    for (const j of stranded){
+      clearTimeout(j.timer);
+      if (j.retried) j.rej(new Error("image worker crashed: " + why));
+      else { j.retried = true; j.again(); }
+    }
   };
   return WORKER;
 }
 function processImage(file, kind, opts){
   opts = opts || {};
-  const id = ++wSeq;
   return new Promise((res, rej) => {
-    const timer = setTimeout(() => {
-      if (wJobs.has(id)){ wJobs.delete(id); rej(new Error("decode timeout after 120s")); }
-    }, 120000);
-    wJobs.set(id, { res, rej, timer });
-    imgWorker().postMessage({ id, file, kind,
-      bigPx: opts.bigPx || S.scan.bigPx, thumbPx: opts.thumbPx || S.scan.thumbPx,
-      thumbQ: S.scan.thumbQ, thumbOnly: !!opts.thumbOnly });
+    const send = () => {
+      const id = ++wSeq;
+      const timer = setTimeout(() => {
+        if (wJobs.has(id)){ wJobs.delete(id); rej(new Error("decode timeout after 120s")); }
+      }, 120000);
+      /* `again` lets the crash handler resend this exact job on a new worker. */
+      wJobs.set(id, { res, rej, timer, again: send, retried: job.retried });
+      job = wJobs.get(id);
+      imgWorker().postMessage({ id, file, kind,
+        bigPx: opts.bigPx || S.scan.bigPx, thumbPx: opts.thumbPx || S.scan.thumbPx,
+        thumbQ: S.scan.thumbQ, thumbOnly: !!opts.thumbOnly });
+    };
+    let job = { retried: false };
+    send();
   });
 }

@@ -651,6 +651,25 @@ function updateProgress(){
     if (fe) fe.textContent = (RUN.active && avg && left)
       ? "About " + fmtDur(left * avg / conc) + " remaining."
       : (RUN.active ? "Estimating…" : "Finished.");
+    /* The error list renders into the Scan tab, which is hidden while this one
+       is open. A run can therefore fail on almost every photo and show nothing
+       but a rising count with no reason -- which is exactly what happened on a
+       6,621-photo pass that failed 1,565 of its first 1,575. */
+    const box = $("#facesErr");
+    if (box){
+      if (!RUN.errors.length) box.hidden = true;
+      else {
+        box.hidden = false;
+        box.textContent = "";
+        const n = RUN.errorCount || RUN.errors.length;
+        box.append(el("b", null, n + (n === 1 ? " photo could" : " photos could") + " not be read. "));
+        box.append(document.createTextNode("First: " + RUN.errors[0].error.slice(0, 220)));
+        if (n > 20 && RUN.done && n / RUN.done > 0.5)
+          box.append(Object.assign(el("div"), { style:"margin-top:6px", textContent:
+            "That is most of them, so the cause is almost certainly the same every "
+            + "time rather than the photos. Stop, and fix the cause." }));
+      }
+    }
   }
 }
 let curUrl = null, curSeq = 0;
