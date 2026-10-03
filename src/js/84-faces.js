@@ -828,6 +828,69 @@ function faceIdFor(photoId, box){
 async function cropsDir(){
   return (await facesDir()).getDirectoryHandle("crops", { create:true });
 }
+
+/* ---- why everything here is batched ----
+   Measured on the reference share: appending 200 bytes costs between 4 and 17
+   SECONDS, and each append is preceded by a size read and followed by a verify
+   read. Writing per photo meant roughly 12 to 15 serialised round trips each,
+   so a 6,621-photo pass committed ONE face in nine hours.
+
+   Crops were the worst of it: one file per face cannot be batched into one
+   write, so 6,000 faces meant 6,000 round trips however the rest was arranged.
+   They now live in a single appendable crops.bin, with each face recording its
+   offset and length, exactly as the vectors do.
+
+   Nothing reaches memory until its flush has committed, so a failed flush leaves
+   the photos unrecorded and they are simply read again next time. */
+const FACEBATCH = { rows: [], pairs: [], crops: [], bytes: 0 };
+
+function faceBatchPending(){ return FACEBATCH.rows.length; }
+function faceBatchHas(id){
+  return FACEBATCH.rows.some(r => r.id === id);
+}
+
+async function flushFaceBatch(){
+  if (!FACEBATCH.rows.length) return { rows:0 };
+  /* Take the batch before any await, so work arriving mid-flush is not lost
+     and is not written twice. */
+  const rows = FACEBATCH.rows, pairs = FACEBATCH.pairs, crops = FACEBATCH.crops;
+  FACEBATCH.rows = []; FACEBATCH.pairs = []; FACEBATCH.crops = []; FACEBATCH.bytes = 0;
+
+  try {
+    /* 1. Crops first: the rows about to be written carry offsets into this file,
+          so it must be the longer of the two if anything goes wrong. */
+    if (crops.length){
+      await exclusive(async () => {
+        const dir = await facesDir();
+        const fh = await dir.getFileHandle("crops.bin", { create:true });
+        const at = (await fh.getFile()).size;
+        const blob = new Blob(crops.map(c => c.bytes));
+        const w = await fh.createWritable({ keepExistingData:true });
+        await w.seek(at); await w.write(blob); await w.close();
+        const after = (await fh.getFile()).size;
+        if (after !== at + blob.size)
+          throw new Error("crops.bin is " + after + " bytes, expected " + (at + blob.size));
+        /* Record where each crop landed, now that the base offset is known. */
+        let off = at;
+        for (const c of crops){
+          const row = rows.find(r => r.id === c.id);
+          if (row){ row.crop_off = off; row.crop_len = c.bytes.byteLength; }
+          off += c.bytes.byteLength;
+        }
+      });
+    }
+    /* 2. Vectors, 3. rows. Both already append and verify in one cycle. */
+    if (pairs.length) await appendFaceVectors(pairs);
+    await appendFaces(rows);
+    return { rows: rows.length, crops: crops.length };
+  } catch (e){
+    /* Put it back so the next flush retries rather than losing the work. */
+    FACEBATCH.rows = rows.concat(FACEBATCH.rows);
+    FACEBATCH.pairs = pairs.concat(FACEBATCH.pairs);
+    FACEBATCH.crops = crops.concat(FACEBATCH.crops);
+    throw e;
+  }
+}
 /* The aligned 112x112 crop is the costly part of the whole pipeline: getting
    it required reading a multi-megabyte photo off the share and running a
    detector. Storing it (about 5 KB) means trying a different embedder later
@@ -841,6 +904,25 @@ async function saveFaceCrop(id, canvas){
   return blob.size;
 }
 async function faceCropCanvas(id){
+  const toCanvas = async blob => {
+    if (!blob || !blob.size) return null;
+    const bmp = await createImageBitmap(blob);
+    const c = new OffscreenCanvas(ARC_SIZE, ARC_SIZE);
+    c.getContext("2d").drawImage(bmp, 0, 0, ARC_SIZE, ARC_SIZE);
+    bmp.close();
+    return c;
+  };
+  /* The batched layout: a slice of crops.bin. */
+  const f = FACES.faces.get(id);
+  if (f && f.crop_len){
+    try {
+      const dir = await facesDir();
+      const file = await (await dir.getFileHandle("crops.bin")).getFile();
+      const got = await toCanvas(file.slice(f.crop_off, f.crop_off + f.crop_len));
+      if (got) return got;
+    } catch {}
+  }
+  /* The older one-file-per-face layout, still read so nothing is orphaned. */
   try {
     const dir = await cropsDir();
     const blob = await (await dir.getFileHandle(id + ".jpg")).getFile();
@@ -924,7 +1006,7 @@ async function detectAndEmbed(photoId, bitmap, src){
   const rows = [], pairs = [];
   for (const f of found){
     const id = faceIdFor(photoId, f.box);
-    if (FACES.faces.has(id)) continue;
+    if (FACES.faces.has(id) || faceBatchHas(id)) continue;
     const crop = faceAlignedCrop(bitmap, f.mesh);
     /* No landmarks means no alignment, and an unaligned crop is exactly the
        input that made this useless. Skip rather than store a bad vector. */
@@ -933,16 +1015,21 @@ async function detectAndEmbed(photoId, bitmap, src){
     if (S.faces.embedder === "faceres") vec = f.vec;
     else vec = await arcEmbedCrop(crop);
     if (!vec || !vec.length) continue;
-    try { await saveFaceCrop(id, crop); } catch {}
+    const cropBytes = await (await crop.convertToBlob(
+      { type:"image/jpeg", quality:0.92 })).arrayBuffer();
     rows.push({ id, photo_id: photoId, box: f.box.map(v => +v.toFixed(4)),
                 score: +(f.score || 0).toFixed(4), px: Math.round(facePx(f)),
                 src: src || "thumb",
                 engine, detected_at: new Date().toISOString() });
     pairs.push({ id, vec });
+    FACEBATCH.crops.push({ id, bytes: cropBytes });
   }
   if (!rows.length) return [];
-  await appendFaceVectors(pairs);
-  await appendFaces(rows);
+  /* Buffered, not written. The caller flushes periodically, because on a share
+     where one append costs seconds, writing per photo cannot finish. */
+  FACEBATCH.rows.push(...rows);
+  FACEBATCH.pairs.push(...pairs);
+  FACEBATCH.bytes += pairs.length * 2048;
   return rows;
 }
 

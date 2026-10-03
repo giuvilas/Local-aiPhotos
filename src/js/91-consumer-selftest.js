@@ -63,6 +63,105 @@ async function consumerSelfTest(scratch){
       probe.remove();
     }
 
+    /* ---- face writes must be BATCHED, not per photo ----
+       Measured on the reference share: appending 200 bytes costs 4 to 17
+       seconds. Writing per photo meant about 12 to 15 serialised round trips
+       each, and a 6,621-photo pass committed ONE face in nine hours. These
+       assertions count WRITE CYCLES, not resulting bytes, because the bytes are
+       identical either way and that is what made the first version of this
+       test useless. */
+    {
+      const keepRecords = IDX.records, keepEngine = FACE_ENGINE;
+      const keepFlush = S.faces.flushEvery, keepEmbedder = S.faces.embedder;
+      try {
+        await deleteAllFaceData();
+        await loadFaces();
+        const dim = 8;
+        const vec = seed => Float32Array.from(
+          Array.from({ length:dim }, (_, i) => Math.sin(seed * 2.3 + i)));
+        /* A stub detector: one face per photo, with a drawable crop. */
+        setFaceEngine(async bmp => {
+          const mesh = [];
+          for (let i = 0; i < 470; i++) mesh.push([0, 0]);
+          mesh[33] = [100,200]; mesh[133] = [120,200];
+          mesh[362] = [180,200]; mesh[263] = [200,200];
+          mesh[1] = [150,240]; mesh[61] = [120,280]; mesh[291] = [180,280];
+          return [{ box:[0.1,0.1,0.4,0.4], score:0.9, vec: vec(bmp.__n), mesh }];
+        }, faceEngineId());
+        S.faces.embedder = "faceres";          // use the stub's vector, no ONNX
+
+        /* Count createWritable calls, which is one per write cycle. */
+        let cycles = 0;
+        const realDir = await facesDir();
+        const spy = {
+          async getFileHandle(name, o){
+            const fh = await realDir.getFileHandle(name, o);
+            return { getFile: () => fh.getFile(),
+              async createWritable(opts){ cycles++; return fh.createWritable(opts); } };
+          },
+          getDirectoryHandle: (n, o) => realDir.getDirectoryHandle(n, o),
+          removeEntry: (n, o) => realDir.removeEntry(n, o),
+          entries: () => realDir.entries(), keys: () => realDir.keys(),
+          values: () => realDir.values()
+        };
+        FACES.dir = spy;
+
+        const canvas = new OffscreenCanvas(400, 400);
+        const cx = canvas.getContext("2d");
+        cx.fillStyle = "#e8c39e"; cx.fillRect(0, 0, 400, 400);
+        const bmp = await createImageBitmap(await canvas.convertToBlob());
+
+        S.faces.flushEvery = 100;             // more than we will add
+        for (let i = 1; i <= 10; i++)
+          await detectAndEmbed("bp-" + i, Object.assign(bmp, { __n:i }), "thumb");
+
+        eq("ten photos are buffered, not written", faceBatchPending(), 10);
+        eq("and nothing has been written at all", cycles, 0);
+        eq("nothing has reached memory either", FACES.faces.size, 0);
+
+        await flushFaceBatch();
+        ok("one flush writes everything in a handful of cycles",
+           cycles > 0 && cycles <= 4, cycles + " write cycles for 10 photos");
+        eq("the batch is empty afterwards", faceBatchPending(), 0);
+        eq("and all ten faces are in memory", FACES.faces.size, 10);
+        eq("with all ten vectors", FACES.vec.ids.length, 10);
+
+        /* Crops live in ONE appendable file, because one file per face cannot be
+           batched: 6,000 faces would be 6,000 round trips however the rest is
+           arranged. */
+        const stored = [...FACES.faces.values()];
+        ok("every face records where its crop lives",
+           stored.every(f => typeof f.crop_off === "number" && f.crop_len > 0),
+           JSON.stringify(stored[0] && { off:stored[0].crop_off, len:stored[0].crop_len }));
+        const offs = stored.map(f => f.crop_off).sort((a, b) => a - b);
+        eq("and the offsets do not overlap", new Set(offs).size, offs.length);
+        FACES.dir = realDir;
+        ok("a crop reads back from the shared file",
+           !!(await faceCropCanvas(stored[0].id)));
+
+        /* A failed flush must keep the work, not drop it. */
+        await detectAndEmbed("bp-fail", Object.assign(bmp, { __n:99 }), "thumb");
+        eq("one more photo is buffered", faceBatchPending(), 1);
+        const realFacesDir = facesDir;
+        facesDir = async () => { throw new Error("share went away"); };
+        let threw = false;
+        try { await flushFaceBatch(); } catch { threw = true; }
+        facesDir = realFacesDir;
+        ok("a failed flush is reported", threw);
+        eq("and the work is still buffered for the next attempt",
+           faceBatchPending(), 1);
+        await flushFaceBatch();
+        eq("which then succeeds", faceBatchPending(), 0);
+        bmp.close();
+      } finally {
+        /* The embedder was switched to the stub's own vectors; leaving it set
+           leaked "faceres" into later tests and failed one of them. */
+        FACE_ENGINE = keepEngine; IDX.records = keepRecords;
+        S.faces.flushEvery = keepFlush; S.faces.embedder = keepEmbedder;
+        try { await deleteAllFaceData(); } catch {}
+      }
+    }
+
     /* ---- a face run must show WHY it is failing, on the tab it was started
            from, and a worker crash must not strand every job in flight ----
        A 6,621-photo pass failed 1,565 of its first 1,575 and showed only a

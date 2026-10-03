@@ -919,7 +919,13 @@ const S = {
      thumbnail only yields a 112px face when the face fills 29% of the frame,
      which most snapshots do not. Decoding to 2048 puts a typical face well
      above 112px, and detection there costs 32ms. */
-  faces: { enabled:false, embedder:"arcface",
+  /* flushEvery: how many photos accumulate before one write cycle. On a share
+     where appending 200 bytes costs 4 to 17 seconds, writing per photo cannot
+     finish; at 100 the write cost per photo falls by about fifty times. The
+     exposure is that a crash re-reads up to this many photos, and reading is
+     the cheap half. peopleOnly uses the captions already paid for: 4,203 of
+     7,039 photos here contain people, which is 8.9 GB instead of 14.7. */
+  faces: { enabled:false, embedder:"arcface", flushEvery:100, peopleOnly:true,
            threshold:0.42, faceresThreshold:0.75,
            minScore:0.4, minFacePx:40, refinePx:2048,
            maxPerPhoto:20, source:"thumbs", readConcurrency:5 },
@@ -5199,8 +5205,25 @@ async function planFaceScan(onPhase, signal){
      50-validate, 60-derived, 65-search, 82-timeline, 86-peopleui and 70-runner;
      this plan was a seventh place that missed it, so a photo removed from the
      Library would still be read and its faces would still turn up in People. */
+  /* The vision model already said which photos contain people, during the pass
+     that cost 68 hours. Using that answer avoids reading 5.8 GB of the 14.7 GB
+     for nothing. Switchable, because a model that missed someone would hide
+     them from this pass too. */
+  /* Skip ONLY on positive evidence of nobody. A missing people field is not
+     evidence, and treating it as one would silently exclude every record from a
+     scan that did not write the field -- which is how a safety filter becomes a
+     way to lose a library. On this index exactly 1 record of 7,039 lacks it,
+     and 2,835 say zero. */
+  const saysNobody = r => {
+    const p = r.people;
+    if (!p || typeof p !== "object") return false;
+    if (typeof p.count === "number") return p.count === 0;
+    if (p.count_bucket) return p.count_bucket === "0" || p.count_bucket === "none";
+    return false;
+  };
   const everything = [...IDX.records.values()]
-    .filter(r => !r.deleted && !r.hidden && r.status !== "error" && !r.probe);
+    .filter(r => !r.deleted && !r.hidden && r.status !== "error" && !r.probe)
+    .filter(r => !S.faces.peopleOnly || !saysNobody(r));
   const outstanding = everything.filter(r => !done.has(r.id));
 
   /* THUMBNAILS NEED NO PHOTO FOLDER. They are keyed by record id and live in
@@ -5315,11 +5338,15 @@ async function runFaceRefine(files){
         if (RUN.errorCount < 20 || RUN.errorCount % 25 === 0) renderErrors();
       }
       RUN.done++;
+      if (faceBatchPending() >= S.faces.flushEvery){
+        try { await flushFaceBatch(); } catch (e){ RUN.errorCount++; }
+      }
       updateProgress();
     }
   }
   try { await Promise.all(Array.from({ length: conc }, loop)); }
   finally {
+    try { await flushFaceBatch(); } catch (e){ RUN.errorCount++; }
     RUN.active = false;
     releaseWakeLock();
     scanUi(false);
@@ -5381,7 +5408,13 @@ async function runFaceScan(files){
       if (!f) return;
       const t0 = performance.now();
       try {
-        await withDeadline("looking at " + f.name, ioDeadline(6, 60000), (async () => {
+        /* The ceiling, not a computed figure. Measured on this share with
+           nothing else running: a single photo read took 58 seconds. Deriving a
+           per-photo bound from average throughput produced 105s and failed 1,565
+           photos out of 1,575, and every attempt to tune that number was an
+           attempt to argue with a measurement. The deadline's only job is to
+           bound a hang. */
+        await withDeadline("looking at " + f.name, ioCeiling(), (async () => {
           const got = await imageFor(f);
           const bmp = await createImageBitmap(got.blob);
           try {
@@ -5400,11 +5433,28 @@ async function runFaceScan(files){
         if (RUN.errorCount < 20 || RUN.errorCount % 25 === 0) renderErrors();
       }
       RUN.done++;
+      /* One write cycle per batch rather than per photo. Flushing is serialised
+         by exclusive(), so the other readers keep going while it commits. */
+      if (faceBatchPending() >= S.faces.flushEvery){
+        try { await flushFaceBatch(); }
+        catch (e){
+          RUN.errorCount++;
+          if (RUN.errors.length < 200)
+            RUN.errors.push({ path:"(saving faces)", error:errText(e) });
+          renderErrors();
+        }
+      }
       updateProgress();
     }
   }
   try { await Promise.all(Array.from({ length: conc }, loop)); }
   finally {
+    /* Whatever is still buffered must be written, including after a Stop. */
+    try { await flushFaceBatch(); }
+    catch (e){
+      RUN.errorCount++;
+      RUN.errors.push({ path:"(saving faces)", error:errText(e) });
+    }
     RUN.active = false;
     releaseWakeLock();
     scanUi(false);
@@ -5412,7 +5462,8 @@ async function runFaceScan(files){
     renderErrors();
     $("#facesProg").hidden = true;
   }
-  return { looked, found, fromThumb, failed: RUN.errorCount, stopped: RUN.stop };
+  return { looked, found, fromThumb, pending: faceBatchPending(),
+           failed: RUN.errorCount, stopped: RUN.stop };
 }
 
 /* ==================== 80-ui.js ==================== */
@@ -8702,6 +8753,69 @@ function faceIdFor(photoId, box){
 async function cropsDir(){
   return (await facesDir()).getDirectoryHandle("crops", { create:true });
 }
+
+/* ---- why everything here is batched ----
+   Measured on the reference share: appending 200 bytes costs between 4 and 17
+   SECONDS, and each append is preceded by a size read and followed by a verify
+   read. Writing per photo meant roughly 12 to 15 serialised round trips each,
+   so a 6,621-photo pass committed ONE face in nine hours.
+
+   Crops were the worst of it: one file per face cannot be batched into one
+   write, so 6,000 faces meant 6,000 round trips however the rest was arranged.
+   They now live in a single appendable crops.bin, with each face recording its
+   offset and length, exactly as the vectors do.
+
+   Nothing reaches memory until its flush has committed, so a failed flush leaves
+   the photos unrecorded and they are simply read again next time. */
+const FACEBATCH = { rows: [], pairs: [], crops: [], bytes: 0 };
+
+function faceBatchPending(){ return FACEBATCH.rows.length; }
+function faceBatchHas(id){
+  return FACEBATCH.rows.some(r => r.id === id);
+}
+
+async function flushFaceBatch(){
+  if (!FACEBATCH.rows.length) return { rows:0 };
+  /* Take the batch before any await, so work arriving mid-flush is not lost
+     and is not written twice. */
+  const rows = FACEBATCH.rows, pairs = FACEBATCH.pairs, crops = FACEBATCH.crops;
+  FACEBATCH.rows = []; FACEBATCH.pairs = []; FACEBATCH.crops = []; FACEBATCH.bytes = 0;
+
+  try {
+    /* 1. Crops first: the rows about to be written carry offsets into this file,
+          so it must be the longer of the two if anything goes wrong. */
+    if (crops.length){
+      await exclusive(async () => {
+        const dir = await facesDir();
+        const fh = await dir.getFileHandle("crops.bin", { create:true });
+        const at = (await fh.getFile()).size;
+        const blob = new Blob(crops.map(c => c.bytes));
+        const w = await fh.createWritable({ keepExistingData:true });
+        await w.seek(at); await w.write(blob); await w.close();
+        const after = (await fh.getFile()).size;
+        if (after !== at + blob.size)
+          throw new Error("crops.bin is " + after + " bytes, expected " + (at + blob.size));
+        /* Record where each crop landed, now that the base offset is known. */
+        let off = at;
+        for (const c of crops){
+          const row = rows.find(r => r.id === c.id);
+          if (row){ row.crop_off = off; row.crop_len = c.bytes.byteLength; }
+          off += c.bytes.byteLength;
+        }
+      });
+    }
+    /* 2. Vectors, 3. rows. Both already append and verify in one cycle. */
+    if (pairs.length) await appendFaceVectors(pairs);
+    await appendFaces(rows);
+    return { rows: rows.length, crops: crops.length };
+  } catch (e){
+    /* Put it back so the next flush retries rather than losing the work. */
+    FACEBATCH.rows = rows.concat(FACEBATCH.rows);
+    FACEBATCH.pairs = pairs.concat(FACEBATCH.pairs);
+    FACEBATCH.crops = crops.concat(FACEBATCH.crops);
+    throw e;
+  }
+}
 /* The aligned 112x112 crop is the costly part of the whole pipeline: getting
    it required reading a multi-megabyte photo off the share and running a
    detector. Storing it (about 5 KB) means trying a different embedder later
@@ -8715,6 +8829,25 @@ async function saveFaceCrop(id, canvas){
   return blob.size;
 }
 async function faceCropCanvas(id){
+  const toCanvas = async blob => {
+    if (!blob || !blob.size) return null;
+    const bmp = await createImageBitmap(blob);
+    const c = new OffscreenCanvas(ARC_SIZE, ARC_SIZE);
+    c.getContext("2d").drawImage(bmp, 0, 0, ARC_SIZE, ARC_SIZE);
+    bmp.close();
+    return c;
+  };
+  /* The batched layout: a slice of crops.bin. */
+  const f = FACES.faces.get(id);
+  if (f && f.crop_len){
+    try {
+      const dir = await facesDir();
+      const file = await (await dir.getFileHandle("crops.bin")).getFile();
+      const got = await toCanvas(file.slice(f.crop_off, f.crop_off + f.crop_len));
+      if (got) return got;
+    } catch {}
+  }
+  /* The older one-file-per-face layout, still read so nothing is orphaned. */
   try {
     const dir = await cropsDir();
     const blob = await (await dir.getFileHandle(id + ".jpg")).getFile();
@@ -8798,7 +8931,7 @@ async function detectAndEmbed(photoId, bitmap, src){
   const rows = [], pairs = [];
   for (const f of found){
     const id = faceIdFor(photoId, f.box);
-    if (FACES.faces.has(id)) continue;
+    if (FACES.faces.has(id) || faceBatchHas(id)) continue;
     const crop = faceAlignedCrop(bitmap, f.mesh);
     /* No landmarks means no alignment, and an unaligned crop is exactly the
        input that made this useless. Skip rather than store a bad vector. */
@@ -8807,16 +8940,21 @@ async function detectAndEmbed(photoId, bitmap, src){
     if (S.faces.embedder === "faceres") vec = f.vec;
     else vec = await arcEmbedCrop(crop);
     if (!vec || !vec.length) continue;
-    try { await saveFaceCrop(id, crop); } catch {}
+    const cropBytes = await (await crop.convertToBlob(
+      { type:"image/jpeg", quality:0.92 })).arrayBuffer();
     rows.push({ id, photo_id: photoId, box: f.box.map(v => +v.toFixed(4)),
                 score: +(f.score || 0).toFixed(4), px: Math.round(facePx(f)),
                 src: src || "thumb",
                 engine, detected_at: new Date().toISOString() });
     pairs.push({ id, vec });
+    FACEBATCH.crops.push({ id, bytes: cropBytes });
   }
   if (!rows.length) return [];
-  await appendFaceVectors(pairs);
-  await appendFaces(rows);
+  /* Buffered, not written. The caller flushes periodically, because on a share
+     where one append costs seconds, writing per photo cannot finish. */
+  FACEBATCH.rows.push(...rows);
+  FACEBATCH.pairs.push(...pairs);
+  FACEBATCH.bytes += pairs.length * 2048;
   return rows;
 }
 
@@ -13522,6 +13660,105 @@ async function consumerSelfTest(scratch){
       galApply = realApply;
       VW.open = keepOpen; VW.i = keepI; GAL.list = keepList;
       probe.remove();
+    }
+
+    /* ---- face writes must be BATCHED, not per photo ----
+       Measured on the reference share: appending 200 bytes costs 4 to 17
+       seconds. Writing per photo meant about 12 to 15 serialised round trips
+       each, and a 6,621-photo pass committed ONE face in nine hours. These
+       assertions count WRITE CYCLES, not resulting bytes, because the bytes are
+       identical either way and that is what made the first version of this
+       test useless. */
+    {
+      const keepRecords = IDX.records, keepEngine = FACE_ENGINE;
+      const keepFlush = S.faces.flushEvery, keepEmbedder = S.faces.embedder;
+      try {
+        await deleteAllFaceData();
+        await loadFaces();
+        const dim = 8;
+        const vec = seed => Float32Array.from(
+          Array.from({ length:dim }, (_, i) => Math.sin(seed * 2.3 + i)));
+        /* A stub detector: one face per photo, with a drawable crop. */
+        setFaceEngine(async bmp => {
+          const mesh = [];
+          for (let i = 0; i < 470; i++) mesh.push([0, 0]);
+          mesh[33] = [100,200]; mesh[133] = [120,200];
+          mesh[362] = [180,200]; mesh[263] = [200,200];
+          mesh[1] = [150,240]; mesh[61] = [120,280]; mesh[291] = [180,280];
+          return [{ box:[0.1,0.1,0.4,0.4], score:0.9, vec: vec(bmp.__n), mesh }];
+        }, faceEngineId());
+        S.faces.embedder = "faceres";          // use the stub's vector, no ONNX
+
+        /* Count createWritable calls, which is one per write cycle. */
+        let cycles = 0;
+        const realDir = await facesDir();
+        const spy = {
+          async getFileHandle(name, o){
+            const fh = await realDir.getFileHandle(name, o);
+            return { getFile: () => fh.getFile(),
+              async createWritable(opts){ cycles++; return fh.createWritable(opts); } };
+          },
+          getDirectoryHandle: (n, o) => realDir.getDirectoryHandle(n, o),
+          removeEntry: (n, o) => realDir.removeEntry(n, o),
+          entries: () => realDir.entries(), keys: () => realDir.keys(),
+          values: () => realDir.values()
+        };
+        FACES.dir = spy;
+
+        const canvas = new OffscreenCanvas(400, 400);
+        const cx = canvas.getContext("2d");
+        cx.fillStyle = "#e8c39e"; cx.fillRect(0, 0, 400, 400);
+        const bmp = await createImageBitmap(await canvas.convertToBlob());
+
+        S.faces.flushEvery = 100;             // more than we will add
+        for (let i = 1; i <= 10; i++)
+          await detectAndEmbed("bp-" + i, Object.assign(bmp, { __n:i }), "thumb");
+
+        eq("ten photos are buffered, not written", faceBatchPending(), 10);
+        eq("and nothing has been written at all", cycles, 0);
+        eq("nothing has reached memory either", FACES.faces.size, 0);
+
+        await flushFaceBatch();
+        ok("one flush writes everything in a handful of cycles",
+           cycles > 0 && cycles <= 4, cycles + " write cycles for 10 photos");
+        eq("the batch is empty afterwards", faceBatchPending(), 0);
+        eq("and all ten faces are in memory", FACES.faces.size, 10);
+        eq("with all ten vectors", FACES.vec.ids.length, 10);
+
+        /* Crops live in ONE appendable file, because one file per face cannot be
+           batched: 6,000 faces would be 6,000 round trips however the rest is
+           arranged. */
+        const stored = [...FACES.faces.values()];
+        ok("every face records where its crop lives",
+           stored.every(f => typeof f.crop_off === "number" && f.crop_len > 0),
+           JSON.stringify(stored[0] && { off:stored[0].crop_off, len:stored[0].crop_len }));
+        const offs = stored.map(f => f.crop_off).sort((a, b) => a - b);
+        eq("and the offsets do not overlap", new Set(offs).size, offs.length);
+        FACES.dir = realDir;
+        ok("a crop reads back from the shared file",
+           !!(await faceCropCanvas(stored[0].id)));
+
+        /* A failed flush must keep the work, not drop it. */
+        await detectAndEmbed("bp-fail", Object.assign(bmp, { __n:99 }), "thumb");
+        eq("one more photo is buffered", faceBatchPending(), 1);
+        const realFacesDir = facesDir;
+        facesDir = async () => { throw new Error("share went away"); };
+        let threw = false;
+        try { await flushFaceBatch(); } catch { threw = true; }
+        facesDir = realFacesDir;
+        ok("a failed flush is reported", threw);
+        eq("and the work is still buffered for the next attempt",
+           faceBatchPending(), 1);
+        await flushFaceBatch();
+        eq("which then succeeds", faceBatchPending(), 0);
+        bmp.close();
+      } finally {
+        /* The embedder was switched to the stub's own vectors; leaving it set
+           leaked "faceres" into later tests and failed one of them. */
+        FACE_ENGINE = keepEngine; IDX.records = keepRecords;
+        S.faces.flushEvery = keepFlush; S.faces.embedder = keepEmbedder;
+        try { await deleteAllFaceData(); } catch {}
+      }
     }
 
     /* ---- a face run must show WHY it is failing, on the tab it was started

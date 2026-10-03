@@ -390,7 +390,7 @@ and a reverse-order toggle.
 - **Pinned thumbnails.** A tile pins its thumbnail while it exists and unpins it when it
   scrolls away, so the thumbnail cache stays bounded and eviction can never revoke an image
   that is visible. Each tile carries its own record id, because tiles outlive the list they
-  were drawn from (see [FINDINGS.md](FINDINGS.md#19-things-outlive-the-list-that-created-them)).
+  were drawn from (see [FINDINGS.md](FINDINGS.md#20-things-outlive-the-list-that-created-them)).
 - **The viewer** opens full-window from the clicked tile. It starts as the tile's rectangle,
   animates to the photo's real aspect ratio, and shows the stored thumbnail immediately; the
   original is decoded in the background and swapped into the same box, so nothing jumps.

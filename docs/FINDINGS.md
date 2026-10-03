@@ -574,7 +574,54 @@ more time in this project than any single defect.
 
 ---
 
-## 17. Index size
+## 17. One write per item is not a design on slow storage
+
+Measured on the reference share, appending **200 bytes**:
+
+```
+cycle 1: append 11,534ms  verify 5,184ms  total 16,718ms
+cycle 2: append  3,856ms                  total  4,429ms
+cycle 3: append  4,173ms                  total  4,369ms
+```
+
+Four to seventeen seconds, for two hundred bytes. Every face wrote a crop file, appended a
+vector and appended a row, each preceded by a size read and followed by a verify read, all
+serialised through one mutex. About twelve to fifteen round trips per photo.
+
+**A 6,621-photo pass therefore committed one face in nine hours**, with 1,565 of its first
+1,575 photos failing on a 105-second per-photo deadline. The readers produced faster than
+the writer could commit, the queue grew without bound, and from some point on everything
+timed out. The handful of successes were the ones that got through before it built up, which
+is why the reported 13.3 s/photo looked survivable: it was the mean of those alone.
+
+Three things follow:
+
+- **Batch everything.** Buffer rows, vectors and crops; flush every hundred photos. Measured
+  by counting `createWritable` calls: 30 cycles for 10 photos became 3.
+- **One file per item cannot be batched.** Crops were a separate JPEG per face, so six
+  thousand faces meant six thousand round trips however the rest was arranged. They now
+  append into a single `crops.bin` with each face recording its offset and length, exactly
+  as the vectors do.
+- **Stop tuning the deadline.** It went 26 s, 53 s, 105 s, and each raise was an argument
+  with a measurement that was telling the truth. With nothing else running, a single photo
+  read on this share took **58 seconds**; the per-photo bound is now simply the ceiling,
+  because its only job is to catch a hang, not to police speed.
+
+**And use what you already paid for.** The captioning pass had already recorded whether each
+photo contains people: 4,203 of 7,039 do. Reading only those is 8.9 GB instead of 14.7, for
+free. Skip only on positive evidence of nobody, never on a missing field, or a safety filter
+becomes a way to lose a library.
+
+| | measured |
+|---|---:|
+| read throughput, 8 readers, nothing competing | 804 KB/s |
+| slowest single file | 58 s |
+| 8.9 GB of reading | ~3.2 h |
+| write cycles per photo, before / after | 3 / 0.04 |
+
+---
+
+## 18. Index size
 
 Measured on real photos, then projected:
 
@@ -591,7 +638,7 @@ also the only part that can be rebuilt without model calls, which is why backups
 
 ---
 
-## 18. Hiding a photo is not deleting it
+## 19. Hiding a photo is not deleting it
 
 Removing a photo from the Library looks like the existing soft-delete: a record already has a
 `deleted` flag, set by **Mark missing**. The obvious implementation reuses it, and it would be
@@ -620,7 +667,7 @@ So removal uses a separate `hidden` flag:
 
 ---
 
-## 19. Things outlive the list that created them
+## 20. Things outlive the list that created them
 
 A virtualised grid keeps a map from list position to the DOM tile showing it. The Library's
 first version cleared tiles by looking up each tile's position in the photo list to find which

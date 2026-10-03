@@ -683,8 +683,25 @@ async function planFaceScan(onPhase, signal){
      50-validate, 60-derived, 65-search, 82-timeline, 86-peopleui and 70-runner;
      this plan was a seventh place that missed it, so a photo removed from the
      Library would still be read and its faces would still turn up in People. */
+  /* The vision model already said which photos contain people, during the pass
+     that cost 68 hours. Using that answer avoids reading 5.8 GB of the 14.7 GB
+     for nothing. Switchable, because a model that missed someone would hide
+     them from this pass too. */
+  /* Skip ONLY on positive evidence of nobody. A missing people field is not
+     evidence, and treating it as one would silently exclude every record from a
+     scan that did not write the field -- which is how a safety filter becomes a
+     way to lose a library. On this index exactly 1 record of 7,039 lacks it,
+     and 2,835 say zero. */
+  const saysNobody = r => {
+    const p = r.people;
+    if (!p || typeof p !== "object") return false;
+    if (typeof p.count === "number") return p.count === 0;
+    if (p.count_bucket) return p.count_bucket === "0" || p.count_bucket === "none";
+    return false;
+  };
   const everything = [...IDX.records.values()]
-    .filter(r => !r.deleted && !r.hidden && r.status !== "error" && !r.probe);
+    .filter(r => !r.deleted && !r.hidden && r.status !== "error" && !r.probe)
+    .filter(r => !S.faces.peopleOnly || !saysNobody(r));
   const outstanding = everything.filter(r => !done.has(r.id));
 
   /* THUMBNAILS NEED NO PHOTO FOLDER. They are keyed by record id and live in
@@ -799,11 +816,15 @@ async function runFaceRefine(files){
         if (RUN.errorCount < 20 || RUN.errorCount % 25 === 0) renderErrors();
       }
       RUN.done++;
+      if (faceBatchPending() >= S.faces.flushEvery){
+        try { await flushFaceBatch(); } catch (e){ RUN.errorCount++; }
+      }
       updateProgress();
     }
   }
   try { await Promise.all(Array.from({ length: conc }, loop)); }
   finally {
+    try { await flushFaceBatch(); } catch (e){ RUN.errorCount++; }
     RUN.active = false;
     releaseWakeLock();
     scanUi(false);
@@ -865,7 +886,13 @@ async function runFaceScan(files){
       if (!f) return;
       const t0 = performance.now();
       try {
-        await withDeadline("looking at " + f.name, ioDeadline(6, 60000), (async () => {
+        /* The ceiling, not a computed figure. Measured on this share with
+           nothing else running: a single photo read took 58 seconds. Deriving a
+           per-photo bound from average throughput produced 105s and failed 1,565
+           photos out of 1,575, and every attempt to tune that number was an
+           attempt to argue with a measurement. The deadline's only job is to
+           bound a hang. */
+        await withDeadline("looking at " + f.name, ioCeiling(), (async () => {
           const got = await imageFor(f);
           const bmp = await createImageBitmap(got.blob);
           try {
@@ -884,11 +911,28 @@ async function runFaceScan(files){
         if (RUN.errorCount < 20 || RUN.errorCount % 25 === 0) renderErrors();
       }
       RUN.done++;
+      /* One write cycle per batch rather than per photo. Flushing is serialised
+         by exclusive(), so the other readers keep going while it commits. */
+      if (faceBatchPending() >= S.faces.flushEvery){
+        try { await flushFaceBatch(); }
+        catch (e){
+          RUN.errorCount++;
+          if (RUN.errors.length < 200)
+            RUN.errors.push({ path:"(saving faces)", error:errText(e) });
+          renderErrors();
+        }
+      }
       updateProgress();
     }
   }
   try { await Promise.all(Array.from({ length: conc }, loop)); }
   finally {
+    /* Whatever is still buffered must be written, including after a Stop. */
+    try { await flushFaceBatch(); }
+    catch (e){
+      RUN.errorCount++;
+      RUN.errors.push({ path:"(saving faces)", error:errText(e) });
+    }
     RUN.active = false;
     releaseWakeLock();
     scanUi(false);
@@ -896,5 +940,6 @@ async function runFaceScan(files){
     renderErrors();
     $("#facesProg").hidden = true;
   }
-  return { looked, found, fromThumb, failed: RUN.errorCount, stopped: RUN.stop };
+  return { looked, found, fromThumb, pending: faceBatchPending(),
+           failed: RUN.errorCount, stopped: RUN.stop };
 }
