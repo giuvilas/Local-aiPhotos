@@ -93,7 +93,8 @@ const S = {
      exposure is that a crash re-reads up to this many photos, and reading is
      the cheap half. peopleOnly uses the captions already paid for: 4,203 of
      7,039 photos here contain people, which is 8.9 GB instead of 14.7. */
-  faces: { enabled:false, embedder:"arcface", flushEvery:100, peopleOnly:true,
+  faces: { enabled:false, embedder:"arcface", flushEvery:100, flushEverySec:45,
+           peopleOnly:true,
            threshold:0.42, faceresThreshold:0.75,
            minScore:0.4, minFacePx:40, refinePx:2048,
            maxPerPhoto:20, source:"thumbs", readConcurrency:5 },

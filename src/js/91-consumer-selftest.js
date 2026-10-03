@@ -63,6 +63,26 @@ async function consumerSelfTest(scratch){
       probe.remove();
     }
 
+    /* ---- a run must say WHICH index it opened ----
+       With a copy of the index on local disk and the original still on the
+       share, both holding identical content, a failure reading config.json
+       looked the same whichever one was in use, and there was no way to tell
+       from the outside. */
+    {
+      const keepMode = S.indexMode, keepDir = S.indexDirHandle;
+      try {
+        const notes = [];
+        S.indexMode = "custom";
+        S.indexDirHandle = { name:"PhotoSearch-index",
+          getDirectoryHandle: (...a) => IDX.dir.getDirectoryHandle(...a) };
+        try { await planFaceScan(m => { notes.push(m); }); } catch {}
+        ok("the first note names the index location",
+           notes.length && /PhotoSearch-index\/\.photoindex/.test(notes[0]), notes[0]);
+        ok("so two indexes with the same content are distinguishable",
+           !notes[0].match(/^Opening the index…$/));
+      } finally { S.indexMode = keepMode; S.indexDirHandle = keepDir; }
+    }
+
     /* ---- face writes must be BATCHED, not per photo ----
        Measured on the reference share: appending 200 bytes costs 4 to 17
        seconds. Writing per photo meant about 12 to 15 serialised round trips

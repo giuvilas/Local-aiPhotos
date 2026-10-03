@@ -668,7 +668,14 @@ async function runThumbnailRebuild(files){
 
 async function planFaceScan(onPhase, signal){
   const say = async m => { if (onPhase) await onPhase(m); };
-  await say("Opening the index…");
+  /* Name the location. With a copy of the index on local disk and the original
+     still on the share, both holding identical content, there was no way to tell
+     from the outside which one a run had opened -- and a failure reading
+     config.json looks the same either way. */
+  const where = (S.indexMode === "custom" && S.indexDirHandle)
+    ? S.indexDirHandle.name
+    : (S.dirHandle ? S.dirHandle.name : "?");
+  await say("Opening the index in " + where + "/.photoindex/…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
     { onPhase: say, timeoutMs: ioCeiling() });
   if (!IDX.loaded){ await say("Loading records…"); await loadRecords(); }
@@ -816,7 +823,13 @@ async function runFaceRefine(files){
         if (RUN.errorCount < 20 || RUN.errorCount % 25 === 0) renderErrors();
       }
       RUN.done++;
-      if (faceBatchPending() >= S.faces.flushEvery){
+      /* Also flush on time. At a hundred photos only, nothing reached disk for
+         the first few minutes of a run, so it looked like nothing was happening
+         and a crash before the first flush lost everything done so far. */
+      if (faceBatchPending() &&
+          (faceBatchPending() >= S.faces.flushEvery
+           || Date.now() - lastFaceFlush > S.faces.flushEverySec * 1000)){
+        lastFaceFlush = Date.now();
         try { await flushFaceBatch(); } catch (e){ RUN.errorCount++; }
       }
       updateProgress();
@@ -836,6 +849,8 @@ async function runFaceRefine(files){
   return { improved, found, remapped, failed: RUN.errorCount, stopped: RUN.stop };
 }
 
+let lastFaceFlush = 0;
+
 async function runFaceScan(files){
   if (libraryMaintenance) throw new Error("Wait for the backup or restore before scanning faces.");
   if (!files.length){ toast("No photos left to look at."); return null; }
@@ -845,6 +860,7 @@ async function runFaceScan(files){
   RUN.tokens = []; RUN.errorCount = 0; RUN.streak = 0; RUN.streakMsg = null;
   RUN.started = Date.now(); RUN.mode = "faces";
   RUN.batch = []; RUN.vecBatch = []; RUN.pending = new Set();
+  lastFaceFlush = Date.now();
   await acquireWakeLock();
   scanUi(true);
   $("#progCard").hidden = false;
@@ -913,7 +929,13 @@ async function runFaceScan(files){
       RUN.done++;
       /* One write cycle per batch rather than per photo. Flushing is serialised
          by exclusive(), so the other readers keep going while it commits. */
-      if (faceBatchPending() >= S.faces.flushEvery){
+      /* Also flush on time. At a hundred photos only, nothing reached disk for
+         the first few minutes of a run, so it looked like nothing was happening
+         and a crash before the first flush lost everything done so far. */
+      if (faceBatchPending() &&
+          (faceBatchPending() >= S.faces.flushEvery
+           || Date.now() - lastFaceFlush > S.faces.flushEverySec * 1000)){
+        lastFaceFlush = Date.now();
         try { await flushFaceBatch(); }
         catch (e){
           RUN.errorCount++;
