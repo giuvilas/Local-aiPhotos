@@ -2071,6 +2071,19 @@ async function selfTest(){
            $("#galGrid").querySelectorAll(".gtile").length, GAL.shown.size);
         const first = GAL.list[[...GAL.shown.keys()][0]].r.id;
         ok("a shown tile pins its thumbnail", thumbPinned.has(first));
+        /* A thumbnail that has not arrived, or cannot be read -- routine over a
+           share -- renders its alt text instead of a picture, and a grid of
+           those is a wall of sentences. The caption belongs to the tile. */
+        {
+          const tile = GAL.shown.get([...GAL.shown.keys()][0]);
+          const img = tile.querySelector("img");
+          const cap = (IDX.records.get(first) || {}).caption
+                   || (IDX.records.get(first) || {}).name || "";
+          eq("a tile's image carries no alt text to fall back to", img.alt, "");
+          ok("the caption is on the tile instead, for a screen reader",
+             tile.getAttribute("aria-label") === cap && tile.title === cap,
+             JSON.stringify(tile.getAttribute("aria-label")));
+        }
         galClear();
         eq("clearing removes every tile", $("#galGrid").querySelectorAll(".gtile").length, 0);
         ok("and unpins their thumbnails", !thumbPinned.has(first));

@@ -110,9 +110,15 @@ function galTile(i){
     + "px;width:" + GAL.cell + "px;height:" + GAL.cell + "px";
   f.tabIndex = 0;
   f.dataset.id = r.id;           // tiles outlive the list they were drawn from
-  f.title = r.caption || r.name || "";
+  const label = r.caption || r.name || "";
+  f.title = label;
+  f.setAttribute("aria-label", label);        // the tile carries the name, not the img
   const im = el("img");
-  im.alt = r.caption || r.name || "";
+  /* alt="" on purpose. A thumbnail that has not arrived yet -- or cannot be
+     read, which over a share is routine -- renders its alt text, and a grid of
+     those turns into a wall of sentences with no pictures in it. The caption is
+     on the figure, so nothing is lost to a screen reader. */
+  im.alt = "";
   im.draggable = false;
   thumbPin(r.id);
   applyRotation(im, r);
