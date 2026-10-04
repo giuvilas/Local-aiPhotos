@@ -168,10 +168,29 @@ async function consumerSelfTest(scratch){
         try { await flushFaceBatch(); } catch { threw = true; }
         facesDir = realFacesDir;
         ok("a failed flush is reported", threw);
+
         eq("and the work is still buffered for the next attempt",
            faceBatchPending(), 1);
         await flushFaceBatch();
         eq("which then succeeds", faceBatchPending(), 0);
+
+        /* ---- what a pass READ, and what it says it read ----
+           "Read from: Originals" was wired, but two things downstream undid it:
+           the rows were stamped "thumb" regardless, and the decode used the
+           vision scan's 1024px instead of the 2048 this option exists for. On a
+           real 6,181-face pass that put 39% of faces UNDER ArcFace's 112px
+           input while the UI reported originals. A label that cannot be trusted
+           is worse than no label: it is what sent the diagnosis the wrong way. */
+        {
+          await flushFaceBatch().catch(() => {});
+          FACES.faces.clear(); FACES.byPhoto.clear();
+          await detectFacesSerial("src-orig", Object.assign(bmp, { __n:51 }), "original");
+          const buffered = faceBatchRows();
+          ok("the serial detector passes the source through",
+             buffered.length > 0 && buffered.every(r => r.src === "original"),
+             JSON.stringify(buffered.map(r => r.src)));
+          FACEBATCH.rows.length = 0; FACEBATCH.pairs.length = 0; FACEBATCH.crops.length = 0;
+        }
         bmp.close();
       } finally {
         /* The embedder was switched to the stub's own vectors; leaving it set

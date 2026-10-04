@@ -880,15 +880,22 @@ async function runFaceScan(files){
       try {
         const dir = await thumbsDir();
         const blob = await (await dir.getFileHandle(f.id + ".jpg")).getFile();
-        if (blob.size){ fromThumb++; return { blob, thumb: blob }; }
+        if (blob.size){ fromThumb++; return { blob, thumb: blob, src:"thumb" }; }
       } catch {}          // no thumbnail for this one: fall back to the original
     }
     if (!f.handle)
       throw new Error("no thumbnail, and the original is not in the folder you "
         + "have open — open that folder, or run a scan to build its thumbnail");
     const file = await withRetry("read " + f.name, () => f.handle.getFile());
-    const img = await processImage(file, f.kind, { thumbOnly:false });
-    return { blob: img.big, thumb: img.thumb };
+    /* refinePx, NOT the vision scan's bigPx. Decoding an original at 1024 and
+       calling it "originals" halves every face: ArcFace consumes 112x112, and a
+       face that is 12% of the frame lands at 125px from 1024 but 250px from
+       2048. Measured on a real pass, 39% of faces fell UNDER the model's input
+       at 1024 -- the accuracy this option exists to buy was being halved at the
+       moment it was read. */
+    const img = await processImage(file, f.kind,
+      { thumbOnly:false, bigPx: S.faces.refinePx });
+    return { blob: img.big, thumb: img.thumb, src:"original" };
   }
 
   /* Reads overlap; detection does not (see detectFacesSerial). One stalled
@@ -912,7 +919,7 @@ async function runFaceScan(files){
           const got = await imageFor(f);
           const bmp = await createImageBitmap(got.blob);
           try {
-            const rows = await detectFacesSerial(f.id, bmp);
+            const rows = await detectFacesSerial(f.id, bmp, got.src);
             found += rows.length;
           } finally { bmp.close(); }
           showCurrent(got.thumb, f.path);

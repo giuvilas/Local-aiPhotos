@@ -845,6 +845,9 @@ async function cropsDir(){
 const FACEBATCH = { rows: [], pairs: [], crops: [], bytes: 0 };
 
 function faceBatchPending(){ return FACEBATCH.rows.length; }
+/* The buffered rows, for the suite: what a pass is about to write is the only
+   place the source it actually read is visible before it reaches disk. */
+function faceBatchRows(){ return FACEBATCH.rows.slice(); }
 function faceBatchHas(id){
   return FACEBATCH.rows.some(r => r.id === id);
 }
@@ -946,10 +949,10 @@ function faceDetectChainRun(fn){
   faceDetectChain = run.then(() => {}, () => {});
   return run;
 }
-function detectFacesSerial(photoId, bitmap){
+function detectFacesSerial(photoId, bitmap, src){
   const run = faceDetectChain.then(
-    () => detectAndEmbed(photoId, bitmap),
-    () => detectAndEmbed(photoId, bitmap));
+    () => detectAndEmbed(photoId, bitmap, src),
+    () => detectAndEmbed(photoId, bitmap, src));
   faceDetectChain = run.then(() => {}, () => {});
   return run;
 }
