@@ -220,11 +220,12 @@ The index is a folder of plain files, readable with anything. By default it is
 | `runs.jsonl` | one line per scan: timing, errors, models, hashes |
 | `state.json` | resume checkpoint: the pending queue |
 | `geo/` · `backups/` | cached place-name data; verified copies of the files above |
-| `faces/faces.jsonl` | face geometry, source and engine provenance |
+| `faces/faces.jsonl` | face geometry, engine, and `src` — `"thumb"` or `"original"`, reporting what was **actually read**, including when a missing thumbnail forced a fall back to the original. Never inferred from the setting: see [FINDINGS §21](FINDINGS.md#21-a-setting-can-be-wired-correctly-and-still-be-undone-downstream) |
 | `faces/facevecs.bin`, `faces/facevecs.json` | face vectors and their row mapping |
 | `faces/people.json` | version 2: names, memberships, confirmations, rejections, separations, review and one-step undo |
 | `faces/people.previous.json` | verified previous people state, retained before a replacement |
-| `faces/crops/<face-id>.jpg` | aligned 112px crops when available; excluded from backups |
+| `faces/crops.bin` | aligned 112px crops appended end to end; each face row records `crop_off` and `crop_len`. One file per face cannot be batched, and on a share where one append costs seconds that alone decides whether a pass finishes |
+| `faces/crops/<face-id>.jpg` | the earlier one-file-per-face layout; still read, no longer written. Excluded from backups |
 
 **Append-only is the durability strategy.** A crash can truncate at most the final line,
 which the loader skips. The cost is that the file grows on every re-scan, since a changed

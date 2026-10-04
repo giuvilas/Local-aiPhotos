@@ -276,6 +276,16 @@ Estimates assume the existing build system and the 738-assertion suite.
 | **R-8** | **Visual pass** — the fork's tokens and type scale (roadmap MU-01), applied once across three tabs instead of eight. | 2 |
 | | **total** | **11.5** |
 
+**Of that, 8.5 days is reorganisation** (R-1 to R-6) and **3 days is new work**: ⌘K did not
+exist before (R-7, 1 day), and the visual pass is roadmap **MU-01**, already costed separately
+at 1.5–2 days (R-8, 2 days). So the redesign proper is 8.5 days, and it *absorbs* MU-01 rather
+than competing with it.
+
+"Just moving controls" is the cheap part — minutes each. **R-2 is the expensive 1.5 days**,
+because `83-library.js` is 744 lines of the fork's grid that must become lens-aware without a
+rewrite, while scope, search, selection and scroll anchor all survive a lens switch. That
+preservation is the product: without it this is a reshuffle, not a redesign.
+
 **Order matters.** R-1 first because everything else depends on the routing. R-8 last because
 re-skinning eight tabs and then deleting five of them is wasted work — this plan *reduces*
 MU-01's surface, so doing the structure first makes the visual pass cheaper, not more expensive.

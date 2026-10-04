@@ -430,6 +430,7 @@ photos, or a folder you choose in Settings. See [Where your photos and data live
 | [TESTING.md](docs/TESTING.md) | The self-test, and driving it headlessly |
 | [OPERATIONS.md](docs/OPERATIONS.md) | Where every file lives, manual backup, slow-NAS notes |
 | [ROADMAP.md](docs/ROADMAP.md) | What is built, what is missing next, and what each costs |
+| [UI-REDESIGN.md](docs/UI-REDESIGN.md) | Eight tabs into three: Explore, Scan, Settings — with every control mapped |
 | [ChangeLog.md](ChangeLog.md) | What changed in each version |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Build, code style, how to propose changes |
 

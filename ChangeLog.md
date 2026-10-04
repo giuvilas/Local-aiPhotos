@@ -15,85 +15,122 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
-- [0.6.22 (2026-10-03)](#0622-2026-10-03)
-  - [Added](#added)
-- [0.6.21 (2026-10-03)](#0621-2026-10-03)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
   - [Fixed](#fixed)
+  - [Added](#added)
+- [0.6.22 (2026-10-03)](#0622-2026-10-03)
+  - [Added](#added-1)
+- [0.6.21 (2026-10-03)](#0621-2026-10-03)
+  - [Fixed](#fixed-1)
   - [Changed](#changed)
 - [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-1)
 - [0.6.19 (2026-10-02)](#0619-2026-10-02)
   - [Changed](#changed-2)
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
-  - [Added](#added-1)
-- [0.6.17 (2026-10-02)](#0617-2026-10-02)
-  - [Fixed](#fixed-1)
-- [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-2)
-- [0.6.15 (2026-10-02)](#0615-2026-10-02)
+- [0.6.17 (2026-10-02)](#0617-2026-10-02)
   - [Fixed](#fixed-2)
+- [0.6.16 (2026-10-02)](#0616-2026-10-02)
+  - [Added](#added-3)
+- [0.6.15 (2026-10-02)](#0615-2026-10-02)
+  - [Fixed](#fixed-3)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
   - [Changed](#changed-3)
 - [0.6.13 (2026-10-02)](#0613-2026-10-02)
   - [Changed](#changed-4)
 - [0.6.12 (2026-10-02)](#0612-2026-10-02)
-  - [Added](#added-3)
-- [0.6.11 (2026-10-02)](#0611-2026-10-02)
   - [Added](#added-4)
+- [0.6.11 (2026-10-02)](#0611-2026-10-02)
+  - [Added](#added-5)
 - [0.6.10 (2026-10-02)](#0610-2026-10-02)
   - [Changed](#changed-5)
 - [0.6.9 (2026-10-02)](#069-2026-10-02)
   - [Changed](#changed-6)
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
-  - [Added](#added-5)
-- [0.6.7 (2026-10-02)](#067-2026-10-02)
-  - [Fixed](#fixed-3)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
-  - [Fixed](#fixed-4)
-- [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-6)
-- [0.6.4 (2026-10-02)](#064-2026-10-02)
+- [0.6.7 (2026-10-02)](#067-2026-10-02)
+  - [Fixed](#fixed-4)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-5)
+- [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-7)
-- [0.6.3 (2026-10-01)](#063-2026-10-01)
+- [0.6.4 (2026-10-02)](#064-2026-10-02)
   - [Added](#added-8)
+- [0.6.3 (2026-10-01)](#063-2026-10-01)
+  - [Added](#added-9)
   - [Changed](#changed-7)
 - [0.6.2 (2026-10-01)](#062-2026-10-01)
-  - [Added](#added-9)
+  - [Added](#added-10)
   - [Changed](#changed-8)
 - [0.6.1 (2026-10-01)](#061-2026-10-01)
-  - [Added](#added-10)
+  - [Added](#added-11)
   - [Changed](#changed-9)
 - [0.6.0 (2026-10-01)](#060-2026-10-01)
-  - [Added](#added-11)
+  - [Added](#added-12)
   - [Changed](#changed-10)
 - [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-11)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-5)
+  - [Fixed](#fixed-6)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
-  - [Added](#added-12)
+  - [Added](#added-13)
   - [Changed](#changed-12)
 - [0.5.1 (2026-10-01)](#051-2026-10-01)
   - [Changed](#changed-13)
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
-  - [Added](#added-13)
-  - [Changed](#changed-14)
-  - [Fixed](#fixed-6)
-- [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-14)
+  - [Changed](#changed-14)
+  - [Fixed](#fixed-7)
+- [0.4.0 (2026-10-01)](#040-2026-10-01)
+  - [Added](#added-15)
   - [Changed](#changed-15)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
-  - [Added](#added-15)
-  - [Changed](#changed-16)
-  - [Fixed](#fixed-7)
-- [0.2.0 (2026-09-29)](#020-2026-09-29)
   - [Added](#added-16)
-  - [Changed](#changed-17)
+  - [Changed](#changed-16)
   - [Fixed](#fixed-8)
-- [0.1.0 (2026-09-23)](#010-2026-09-23)
+- [0.2.0 (2026-09-29)](#020-2026-09-29)
   - [Added](#added-17)
+  - [Changed](#changed-17)
+  - [Fixed](#fixed-9)
+- [0.1.0 (2026-09-23)](#010-2026-09-23)
+  - [Added](#added-18)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.23 (2026-10-04)
+
+**Summary:** "Read from: Originals" now reads originals at the size that option exists for, and
+says what it actually read.
+
+### Fixed
+
+- **The face pass decoded originals at half the configured size.** Reading an original used
+  `processImage`'s default `bigPx`, which is the *vision scan's* 1,024 px, not `faces.refinePx`
+  (2,048). ArcFace consumes 112×112, so a face filling 12% of the frame landed at 125 px instead
+  of 250 px. On a completed 6,181-face pass, **39% of faces fell under the model's input while
+  the option promising accuracy was selected**.
+- **Every face row was stamped `src: "thumb"` regardless of what was read**, because
+  `detectFacesSerial` dropped the argument. The stored data therefore contradicted the UI, and
+  the data was believed: that mislabel sent a diagnosis the wrong way for an entire exchange.
+  `src` now reports what was genuinely read, including when a missing thumbnail forces a fall
+  back to the original. See
+  [FINDINGS §21](docs/FINDINGS.md#21-a-setting-can-be-wired-correctly-and-still-be-undone-downstream).
+- **A thumbnail that had not arrived rendered its caption.** Library tiles set
+  `img.alt = caption`, so over a share — where a thumbnail routinely has not loaded yet — the
+  grid became a wall of sentences with no pictures in it. The caption moved to the figure, where
+  a screen reader still finds it; the image has no alt to fall back on.
+
+### Added
+
+- **[docs/UI-REDESIGN.md](docs/UI-REDESIGN.md)**: eight tabs into three — Explore, Scan,
+  Settings — with all 80 controls mapped to their new home, the four that deliberately change
+  shape, and a phased plan. Now roadmap milestone **RS**, ahead of MU, which it absorbs.
+- `faces/crops.bin` and the meaning of the `src` field are documented in
+  [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.22 (2026-10-03)
 

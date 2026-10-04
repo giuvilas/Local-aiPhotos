@@ -33,6 +33,7 @@ Written on 29 September 2026, after 6,635 photos were indexed and searchable, an
 - [Sources](#sources)
 - [Delivered in this change](#delivered-in-this-change)
 - [Milestones](#milestones)
+- [RS — three tabs: Explore, Scan, Settings](#rs--three-tabs-explore-scan-settings)
 - [MU — the Photos-style interface](#mu--the-photos-style-interface)
   - [What makes their interface theirs](#what-makes-their-interface-theirs)
   - [MU-01: tokens and re-skin (1.5–2 days)](#mu-01-tokens-and-re-skin-152-days)
@@ -390,9 +391,46 @@ user labelling. Owners are roles to assign.
 [↑ Back to Index](#index)
 
 
+## RS — three tabs: Explore, Scan, Settings
+
+**This is now the first milestone**, ahead of MU, on the owner's instruction after reviewing a
+working prototype (4 October 2026). The full proposal, with every one of the 80 controls mapped
+to its new home, is **[UI-REDESIGN.md](UI-REDESIGN.md)**.
+
+The app has 8 top-level tabs and 80 controls, and five of those tabs show the *same photos
+arranged differently*. Library, Favourites, Timeline, People and Search results are one grid
+with a different filter or grouping, and each is a dead end: finding a photo in Search and then
+wanting it by date means starting again.
+
+| phase | work | days |
+|---|---|---:|
+| RS-1 | Routing and shell: three tabs, lens and scope controls, rail, hash routes, state preserved across lens switches | 2 |
+| RS-2 | Explore: Favourites becomes a scope; Timeline and People become lenses | 1.5 |
+| RS-3 | Search unification — delete the Search tab, fold its exclusion, dates and toggles into the header field | 1 |
+| RS-4 | Scan: Photos · Faces · Maintenance, with a status rail | 1.5 |
+| RS-5 | Settings: Connection · Library · Scanning · Privacy & data · Diagnostics | 1.5 |
+| RS-6 | Chat drawer; its answers populate the grid behind it | 1 |
+| RS-7 | ⌘K command palette | 1 |
+| RS-8 | Visual pass — **this is MU-01**, applied once across three tabs instead of eight | 2 |
+
+**8.5 days of reorganisation (RS-1…RS-6) plus 3 days of new work.** RS-8 *is* MU-01, so this
+milestone absorbs the visual work rather than competing with it, and re-skinning three tabs is
+cheaper than re-skinning eight. **RS-1 + RS-2 + RS-3 (4.5 days) removes three tabs and makes
+search work across every arrangement** — most of the felt improvement.
+
+**RS-1 is the bet.** If scope, search, selection and scroll cannot be preserved across a lens
+switch, the redesign loses its point; build that first and stop if it does not hold.
+
+[↑ Back to Index](#index)
+
+---
+
 ## MU — the Photos-style interface
 
-**This is the first milestone.** It is ordered ahead of M0 on the owner's instruction.
+**Superseded in part by RS above**, which absorbs MU-01 as RS-8 and replaces MU-02's tab rail
+with the three-tab shell. MU-03 onwards (the grid and viewer) still stands.
+
+It was ordered ahead of M0 on the owner's instruction.
 Stated once and then accepted: M0 carries data-integrity work rated P0, and running a
 visual programme first means those defects stay open for longer. The mitigation is that
 every MU step below is presentation-only except where it says otherwise, so none of them

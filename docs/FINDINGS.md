@@ -34,6 +34,7 @@ runtime, `qwen3.5-9b-mlx` (4-bit), and `text-embedding-nomic-embed-text-v1.5`.
 - [18. Index size](#18-index-size)
 - [19. Hiding a photo is not deleting it](#19-hiding-a-photo-is-not-deleting-it)
 - [20. Things outlive the list that created them](#20-things-outlive-the-list-that-created-them)
+- [21. A setting can be wired correctly and still be undone downstream](#21-a-setting-can-be-wired-correctly-and-still-be-undone-downstream)
 - [Reproducing any of this](#reproducing-any-of-this)
 <!-- index:end -->
 
@@ -696,6 +697,50 @@ identity.
 This was found by driving the real UI with fake data (see
 [TESTING.md](TESTING.md#exercising-the-ui-without-a-photo-library)), not by the logic tests,
 which built the list and the tiles in separate, tidy steps.
+
+[↑ Back to Index](#index)
+
+---
+
+## 21. A setting can be wired correctly and still be undone downstream
+
+The face pass offered **Read from: Originals**. The dropdown wrote `S.faces.source`, the read
+path branched on it, and originals really were read. The option was wired. It was still undone
+twice between the dropdown and the disk.
+
+**The decode was half the size the option exists for.** Reading an original called
+`processImage(file, kind, { thumbOnly:false })`, and `processImage` falls back to
+`S.scan.bigPx` — the **vision scan's** 1024 px — rather than `S.faces.refinePx`, the 2048 px
+that the faces settings define and document. ArcFace consumes 112×112, so the decode size *is*
+the accuracy:
+
+| decode | a face filling 12% of the frame | below the model's input |
+|---|---:|---:|
+| 1024 px (what ran) | 125 px | 39% of 6,181 faces |
+| 2048 px (what was configured) | 250 px | far fewer |
+
+The user bought accuracy and received half of it, with nothing anywhere saying so.
+
+**The provenance field lied.** `detectFacesSerial(photoId, bitmap)` took no `src` argument and
+called `detectAndEmbed(photoId, bitmap)` without one, so `src: src || "thumb"` stamped every
+row `"thumb"` whatever had been read. The refine path passed `"original"` correctly, so only
+the main scan was affected — and only in the data, never on screen.
+
+**The cost was the diagnosis, not the pixels.** Asked why grouping was poor, the stored data
+said `src: "thumb"` for all 6,181 faces, and that was believed over the user, who said the
+dropdown read Originals. They were right. The contradiction was only resolved by a statistic
+the label could not fake: `max px = 1024`, with 8.8% of faces above 384 px — impossible from a
+384 px thumbnail, and impossible to reach from a 2048 px decode either. The data was right
+about *what* and wrong about *where from*.
+
+**What to take from it.** A control is not verified by following its value one hop. It is
+verified at the other end: what was actually read, at what size, and what the stored record
+says about itself. Three places have to agree, and here no test compared any two of them.
+The `src` field now reports what was genuinely read — including when a missing thumbnail
+forces a fall back to the original — and the suite asserts the pass-through, mutation-checked.
+
+A corollary: **a provenance field that can be wrong is worse than no provenance field**,
+because it is trusted exactly when something has already gone wrong and judgement is poorest.
 
 [↑ Back to Index](#index)
 
