@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.25";
+const APP_VERSION = "0.6.26";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -87,6 +87,12 @@ const S = {
      thumbnail only yields a 112px face when the face fills 29% of the frame,
      which most snapshots do not. Decoding to 2048 puts a typical face well
      above 112px, and detection there costs 32ms. */
+  /* source defaults to "originals". Thumbnails are eight minutes against three
+     hours, which is why they were the default -- but a measured pass over this
+     library put 42% of the faces it found below the model's 112px input, and
+     the groups that came back were mostly one photo each. A fast answer that
+     cannot tell two people apart is not the cheaper option, it is the wrong
+     one, and the cost is paid again when it has to be redone. */
   /* flushEvery: how many photos accumulate before one write cycle. On a share
      where appending 200 bytes costs 4 to 17 seconds, writing per photo cannot
      finish; at 100 the write cost per photo falls by about fifty times. The
@@ -97,7 +103,7 @@ const S = {
            peopleOnly:true,
            threshold:0.42, faceresThreshold:0.75,
            minScore:0.4, minFacePx:40, refinePx:2048,
-           maxPerPhoto:20, source:"thumbs", readConcurrency:5 },
+           maxPerPhoto:20, source:"originals", readConcurrency:5 },
   backup: { enabled:true, keep:3, minNewRecords:1 },
   plan: null
 };
@@ -198,8 +204,8 @@ async function idbGet(k){ const db = await idb(); return new Promise((res, rej) 
    one still owns the <section> of that name; "Grid" is only what the lens is
    called on screen. */
 const TOPS = ["explore","scan","settings"];
-const VIEWS = ["library","timeline","people","search","chat","scan","settings"];
-const LENSES = ["library","timeline","people","search","chat"];
+const VIEWS = ["library","timeline","people","chat","scan","settings"];
+const LENSES = ["library","timeline","people","chat"];
 /* Favourites is not a view. It is a scope over the grid, and always was: the
    tab rendered the Library's section with a filter applied. */
 const VIEW_SECTION = { favourites:"library" };
@@ -225,6 +231,9 @@ function routeFromHash(hash){
   const [a, b] = h.split("/");
   if (a === "explore") return { view: LENSES.includes(b) ? b : "library" };
   if (a === "favourites") return { view:"library", scope:"favourites" };
+  /* Search was a tab and is now the field in the header, reachable from every
+     lens. Its old address lands on the grid, where its results are shown. */
+  if (a === "search") return { view:"library" };
   if (VIEWS.includes(a)) return { view:a };
   return null;                       // #selftest and the like are left alone
 }
@@ -247,7 +256,6 @@ function tabShownHook(name){
     if (typeof galSetView === "function"
         && GAL.view !== "search" && GAL.view !== curScope) galSetView(curScope);
   }
-  if (name === "search" && typeof onSearchShown === "function") onSearchShown();
   if (name === "chat" && typeof chatFillGrids === "function") chatFillGrids();
   if (name === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
   if (name === "people" && typeof onPeopleShown === "function") onPeopleShown();

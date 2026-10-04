@@ -360,7 +360,7 @@ Nine tools: `search_photos`, `filter_photos`, `list_people`, `find_similar`, `ge
 - **Model output is never inserted as HTML.** A small Markdown subset is rendered into DOM
   nodes, so a caption containing markup stays inert. A test asserts exactly that.
 
-The direct Search tab uses the same retrieval function as chat. Known unquoted names become
+The search field uses the same retrieval function as chat. Known unquoted names become
 hard person-ID filters; multiple names require everyone to appear. Quoted names stay
 literal, name interpretation can be disabled, and duplicate names require an explicit person
 selection. The response includes applied filters and a full result count for pagination.

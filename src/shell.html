@@ -81,6 +81,15 @@ nav button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
   font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.14)}
 #lensScope{border:1px solid var(--line);background:var(--panel2);color:var(--text);
   border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+#sgMore{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding:11px 20px;
+  border-bottom:1px solid var(--line);background:var(--panel2)}
+#sgMore label{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--dim)}
+#sgMore input[type=date],#sgMore input[type=search]{border:1px solid var(--line);
+  background:var(--panel);color:var(--text);border-radius:8px;padding:5px 8px;
+  font:inherit;font-size:13px}
+#sgMore code{background:var(--panel);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-family:var(--mono);font-size:12px;color:var(--text)}
+#sgFilterCount:empty{display:none}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 nav button[aria-selected="true"]{background:var(--panel);color:var(--accent);font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,.14)}
@@ -443,14 +452,13 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 
   <!-- Explore's lens bar: the same photos, arranged differently. Grid, Timeline
        and People are not destinations, so switching between them keeps the
-       scope, the search and the selection. Search and Chat sit here until they
-       become the header field (RS-3) and a drawer (RS-6). -->
+       scope, the search and the selection. Search is the header field on every
+       lens; Chat sits here until it becomes a drawer (RS-6). -->
   <div id="lensbar" hidden>
     <div class="seg" role="tablist" id="lenses">
       <button role="tab" data-lens="library" aria-selected="true">Grid</button>
       <button role="tab" data-lens="timeline" aria-selected="false">Timeline</button>
       <button role="tab" data-lens="people" aria-selected="false">People</button>
-      <button role="tab" data-lens="search" aria-selected="false">Search</button>
       <button role="tab" data-lens="chat" aria-selected="false">Chat</button>
     </div>
     <label class="lensScopeWrap" id="lensScopeWrap">
@@ -461,44 +469,28 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <option value="removed">Removed</option>
       </select>
     </label>
+    <button class="btn sec" id="sgMoreBtn" type="button" aria-expanded="false"
+            aria-controls="sgMore">Filters</button>
+    <span class="hint" id="sgFilterCount" style="margin:0"></span>
+  </div>
+
+  <!-- What the Search tab used to be: the same filters, narrowing whatever you
+       are already looking at instead of being a page you visit and leave. -->
+  <div id="sgMore" hidden>
+    <label>From <input type="date" id="sgFrom"></label>
+    <label>To <input type="date" id="sgTo"></label>
+    <label>Place <input type="search" id="sgPlace" placeholder="Sicily" autocomplete="off"></label>
+    <label class="switch"><input type="checkbox" id="sgInterpret"><span class="swt"> Recognise names in my search</span></label>
+    <label class="switch"><input type="checkbox" id="sgSemantic" checked><span class="swt"> Include meaning-based matches</span></label>
+    <button class="btn sec" id="sgFiltersClear" type="button">Clear filters</button>
+    <span class="hint" style="flex-basis:100%;margin:6px 0 0">Or type it:
+      <code>-screenshot</code> leaves a word out, <code>-Anna</code> leaves a person out,
+      <code>place:Sicily</code> narrows by place, <code>2019..2021</code> by date.</span>
   </div>
 
 <main>
   <div id="browserWarn" class="note" hidden></div>
 
-
-  <section id="tab-search" hidden>
-    <div class="card">
-      <h2>Find your photos</h2>
-      <form id="photoSearchForm">
-        <label for="photoQuery">Search by person, subject or words in a picture</label>
-        <div class="row">
-          <input id="photoQuery" type="search" placeholder="Anna and Ben at the beach" style="flex:1;min-width:180px">
-          <button class="btn" id="photoSearchSubmit" type="submit">Search</button>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div><label for="photoPlace">Place</label><input id="photoPlace" placeholder="e.g. Sicily"></div>
-          <div><label for="photoFrom">From</label><input id="photoFrom" type="date"></div>
-          <div><label for="photoTo">To</label><input id="photoTo" type="date"></div>
-        </div>
-        <fieldset style="border:1px solid var(--line);border-radius:8px;margin:12px 0;padding:10px">
-          <legend>People — everyone selected must appear</legend>
-          <div id="photoPeople" class="row"><span class="hint">Connect your index to see named people.</span></div>
-        </fieldset>
-        <div class="row">
-          <label class="switch"><input id="photoInterpret" type="checkbox" checked>Recognise names in my search</label>
-          <label class="switch"><input id="photoSemantic" type="checkbox">Include meaning-based matches</label>
-          <button class="btn sec" id="photoSearchClear" type="button">Clear filters</button>
-        </div>
-      </form>
-      <p class="hint">People, dates and keywords work without a model server. Meaning-based search uses your configured embedding server. Put literal text in double quotes.</p>
-      <div id="photoSearchStatus" role="status" aria-live="polite"></div>
-      <div id="photoSearchApplied" class="row" style="margin:10px 0"></div>
-      <div id="photoSearchResults"></div>
-      <div id="photoSearchPages" class="row" style="margin-top:12px"></div>
-      <details id="photoSearchDetails" hidden><summary>How these results were found</summary><div id="photoSearchHow" class="hint"></div></details>
-    </div>
-  </section>
 
   <section id="tab-scan" hidden>
     <div class="card">
@@ -616,8 +608,8 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           Read from
           <select id="sFaceSrc" style="background:var(--panel2);border:1px solid var(--line);
             color:var(--text);border-radius:6px;padding:3px 7px;font-size:12px;font-family:inherit">
-            <option value="thumbs">Thumbnails — fast</option>
             <option value="originals">Originals — accurate, slow</option>
+            <option value="thumbs">Thumbnails — fast</option>
           </select>
         </label>
         <label class="switch" title="Skip photos already described as having nobody in them"

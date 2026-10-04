@@ -37,8 +37,7 @@ ORDER = [
     "84-faces.js",    # face detection, grouping, naming
     "86-peopleui.js", # the People tab
     "87-chatui.js",   # chat rendering, lightbox
-    "88-search.js",   # the header search field: suggestions, chips, results in the Library
-    "88-searchui.js", # direct search, people/date/place filters and pagination
+    "88-search.js",   # the search field: suggestions, chips, filters, results in the grid
     "89-restore.js",  # keeps the chat and Library view across a page refresh
     "90-selftest.js", # in-browser test suite
     "91-consumer-selftest.js", # people corrections, direct retrieval, face recovery

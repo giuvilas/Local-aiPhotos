@@ -9,7 +9,12 @@
    Nothing here calls a model except the ordinary text search, which embeds the
    query when an embedding model is selected, exactly as chat does. */
 
-const SG = { open:false, items:[], sel:0, facts:null, key:"", run:0 };
+const SG = { open:false, items:[], sel:0, facts:null, key:"", run:0,
+  /* The Search tab's boxes, kept as state rather than as a separate page.
+     interpret defaults OFF here: a person is chosen as a chip, so leaving name
+     interpretation on made any typed word that matched a name a hidden hard
+     filter -- and two people sharing a name threw the whole search away. */
+  filters: { from:"", to:"", place:"", interpret:false, semantic:true } };
 
 const sgLive = r => !!r && !r.deleted && !r.hidden && r.status !== "error" && !r.probe;
 
@@ -266,7 +271,7 @@ function sgArgs(){
      "Search failed". The chips carry the people; the text is just text. */
   const F = sgFacts(), a = { limit:100000, max:100000, photo_sets:[],
                              interpret_people:false };
-  const types = [], things = [], occ = [];
+  const types = [], things = [], occ = [], exclude = [];
   for (const c of GAL.chips){
     if (c.kind === "person") a.photo_sets.push((F.people.find(p => p.id === c.id) || { ids:new Set() }).ids);
     else if (c.kind === "faces") a.photo_sets.push(F.withFaces);
@@ -282,8 +287,63 @@ function sgArgs(){
   if (types.length) a.image_type = types;
   if (things.length) a.entities = things;
   if (occ.length) a.occasion = occ;
-  if (GAL.texts.length) a.query = GAL.texts.join(" ");
+
+  /* Operators typed into the field. The Search tab offered these as separate
+     boxes on a separate page; here they are part of what you type, so they
+     narrow whatever you are already looking at instead of taking you somewhere
+     else. A chip still beats them: chips are exact, text is a guess. */
+  const words = [];
+  for (const t of GAL.texts){
+    const raw = String(t).trim();
+    if (!raw) continue;
+    const neg = /^-(\S.*)$/.exec(raw);
+    if (neg){ exclude.push(neg[1].trim()); continue; }
+    const pl = /^place:\s*(.+)$/i.exec(raw);
+    if (pl){ a.place = pl[1].trim(); continue; }
+    const rng = sgDateRange(raw);
+    if (rng){ a.date_from = rng.from; a.date_to = rng.to; continue; }
+    words.push(raw);
+  }
+  if (words.length) a.query = words.join(" ");
+
+  /* "-anna" means the person where that names one, and the word otherwise. */
+  if (exclude.length){
+    const exIds = [], exWords = [];
+    for (const term of exclude){
+      const k = term.toLowerCase();
+      const hit = F.people.filter(p => p.named && p.label.toLowerCase() === k);
+      if (hit.length === 1) exIds.push(hit[0].id); else exWords.push(term);
+    }
+    if (exIds.length) a.exclude_person_ids = exIds;
+    if (exWords.length) a.exclude_text = exWords;
+  }
+
+  /* The panel under the field, for anyone who would rather click than type. */
+  const f = SG.filters;
+  if (f.from) a.date_from = f.from;
+  if (f.to) a.date_to = f.to;
+  if (f.place) a.place = f.place;
+  if (f.interpret) a.interpret_people = true;
+  if (!f.semantic) a.semantic = false;
   return a;
+}
+
+/* "2019..2021", "2019-06..2019-08", "2019-06-01..2019-06-30". A bare year is
+   left alone: it is already a chip with a count beside it, which is better. */
+function sgDateRange(raw){
+  const m = /^(\d{4}(?:-\d{2}(?:-\d{2})?)?)\s*\.\.\s*(\d{4}(?:-\d{2}(?:-\d{2})?)?)$/.exec(raw);
+  if (!m) return null;
+  const lo = p => p.length === 4 ? p + "-01-01" : p.length === 7 ? p + "-01" : p;
+  const hi = p => {
+    if (p.length === 4) return p + "-12-31";
+    if (p.length === 7){
+      const [y, mo] = p.split("-").map(Number);
+      return p + "-" + String(new Date(y, mo, 0).getDate()).padStart(2, "0");
+    }
+    return p;
+  };
+  const from = lo(m[1]), to = hi(m[2]);
+  return from <= to ? { from, to } : { from:lo(m[2]), to:hi(m[1]) };
 }
 
 async function runSearch(quiet){
@@ -314,6 +374,14 @@ async function runSearch(quiet){
 function clearSearch(){
   SG.run++;
   GAL.chips = []; GAL.texts = []; GAL.results = [];
+  /* Clearing the search clears its filters: leaving a date range armed behind
+     an empty field is how the next search comes back mysteriously empty. */
+  if ($("#sgFrom")){
+    $("#sgFrom").value = ""; $("#sgTo").value = ""; $("#sgPlace").value = "";
+    $("#sgInterpret").checked = false; $("#sgSemantic").checked = true;
+    SG.filters = { from:"", to:"", place:"", interpret:false, semantic:true };
+    if (typeof sgRenderFilters === "function") sgRenderFilters();
+  }
   if (GAL.view === "search") GAL.view = "all";
   galBuild(); galBar(); galClear(); galLayout();
   galMessage(GAL.list.length ? "" : "Nothing indexed yet — run a scan first.");
@@ -321,6 +389,53 @@ function clearSearch(){
 function galDropChip(i){ GAL.chips.splice(i, 1); sgRenderChips(); runSearch(); }
 function galDropText(i){ GAL.texts.splice(i, 1); sgRenderChips(); runSearch(); }
 $("#galClearSearch").onclick = clearSearch;
+
+/* ---- the filters panel ---- */
+function sgFiltersActive(){
+  const f = SG.filters;
+  return (f.from ? 1 : 0) + (f.to ? 1 : 0) + (f.place ? 1 : 0)
+       + (f.interpret ? 1 : 0) + (f.semantic ? 0 : 1);
+}
+function sgRenderFilters(){
+  const n = sgFiltersActive();
+  $("#sgFilterCount").textContent = n ? n + (n === 1 ? " filter" : " filters") : "";
+  $("#sgMoreBtn").classList.toggle("on", n > 0);
+}
+function sgReadFilters(){
+  const f = SG.filters;
+  f.from = $("#sgFrom").value; f.to = $("#sgTo").value;
+  f.place = $("#sgPlace").value.trim();
+  f.interpret = $("#sgInterpret").checked;
+  f.semantic = $("#sgSemantic").checked;
+  /* A range the wrong way round is a slip, not a question: swap it rather than
+     refusing and making the person work out which box was wrong. */
+  if (f.from && f.to && f.from > f.to){
+    const t = f.from; f.from = f.to; f.to = t;
+    $("#sgFrom").value = f.from; $("#sgTo").value = f.to;
+  }
+  sgRenderFilters();
+}
+function sgFiltersChanged(){
+  sgReadFilters();
+  /* Filters narrow what you are looking at, so they only run a search when
+     there is one -- otherwise setting a date would silently empty the grid. */
+  if (GAL.chips.length || GAL.texts.length) runSearch();
+}
+$("#sgMoreBtn").onclick = () => {
+  const open = $("#sgMore").hidden;
+  $("#sgMore").hidden = !open;
+  $("#sgMoreBtn").setAttribute("aria-expanded", String(open));
+  if (open) $("#sgFrom").focus();
+};
+for (const id of ["sgFrom","sgTo","sgInterpret","sgSemantic"])
+  $("#" + id).onchange = sgFiltersChanged;
+$("#sgPlace").onchange = sgFiltersChanged;
+$("#sgFiltersClear").onclick = () => {
+  $("#sgFrom").value = ""; $("#sgTo").value = ""; $("#sgPlace").value = "";
+  $("#sgInterpret").checked = false; $("#sgSemantic").checked = true;
+  sgFiltersChanged();
+};
+sgRenderFilters();
 
 /* ---- the field ---- */
 {

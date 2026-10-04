@@ -81,6 +81,15 @@ nav button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
   font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.14)}
 #lensScope{border:1px solid var(--line);background:var(--panel2);color:var(--text);
   border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+#sgMore{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding:11px 20px;
+  border-bottom:1px solid var(--line);background:var(--panel2)}
+#sgMore label{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--dim)}
+#sgMore input[type=date],#sgMore input[type=search]{border:1px solid var(--line);
+  background:var(--panel);color:var(--text);border-radius:8px;padding:5px 8px;
+  font:inherit;font-size:13px}
+#sgMore code{background:var(--panel);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-family:var(--mono);font-size:12px;color:var(--text)}
+#sgFilterCount:empty{display:none}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 nav button[aria-selected="true"]{background:var(--panel);color:var(--accent);font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,.14)}
@@ -443,14 +452,13 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 
   <!-- Explore's lens bar: the same photos, arranged differently. Grid, Timeline
        and People are not destinations, so switching between them keeps the
-       scope, the search and the selection. Search and Chat sit here until they
-       become the header field (RS-3) and a drawer (RS-6). -->
+       scope, the search and the selection. Search is the header field on every
+       lens; Chat sits here until it becomes a drawer (RS-6). -->
   <div id="lensbar" hidden>
     <div class="seg" role="tablist" id="lenses">
       <button role="tab" data-lens="library" aria-selected="true">Grid</button>
       <button role="tab" data-lens="timeline" aria-selected="false">Timeline</button>
       <button role="tab" data-lens="people" aria-selected="false">People</button>
-      <button role="tab" data-lens="search" aria-selected="false">Search</button>
       <button role="tab" data-lens="chat" aria-selected="false">Chat</button>
     </div>
     <label class="lensScopeWrap" id="lensScopeWrap">
@@ -461,44 +469,28 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <option value="removed">Removed</option>
       </select>
     </label>
+    <button class="btn sec" id="sgMoreBtn" type="button" aria-expanded="false"
+            aria-controls="sgMore">Filters</button>
+    <span class="hint" id="sgFilterCount" style="margin:0"></span>
+  </div>
+
+  <!-- What the Search tab used to be: the same filters, narrowing whatever you
+       are already looking at instead of being a page you visit and leave. -->
+  <div id="sgMore" hidden>
+    <label>From <input type="date" id="sgFrom"></label>
+    <label>To <input type="date" id="sgTo"></label>
+    <label>Place <input type="search" id="sgPlace" placeholder="Sicily" autocomplete="off"></label>
+    <label class="switch"><input type="checkbox" id="sgInterpret"><span class="swt"> Recognise names in my search</span></label>
+    <label class="switch"><input type="checkbox" id="sgSemantic" checked><span class="swt"> Include meaning-based matches</span></label>
+    <button class="btn sec" id="sgFiltersClear" type="button">Clear filters</button>
+    <span class="hint" style="flex-basis:100%;margin:6px 0 0">Or type it:
+      <code>-screenshot</code> leaves a word out, <code>-Anna</code> leaves a person out,
+      <code>place:Sicily</code> narrows by place, <code>2019..2021</code> by date.</span>
   </div>
 
 <main>
   <div id="browserWarn" class="note" hidden></div>
 
-
-  <section id="tab-search" hidden>
-    <div class="card">
-      <h2>Find your photos</h2>
-      <form id="photoSearchForm">
-        <label for="photoQuery">Search by person, subject or words in a picture</label>
-        <div class="row">
-          <input id="photoQuery" type="search" placeholder="Anna and Ben at the beach" style="flex:1;min-width:180px">
-          <button class="btn" id="photoSearchSubmit" type="submit">Search</button>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div><label for="photoPlace">Place</label><input id="photoPlace" placeholder="e.g. Sicily"></div>
-          <div><label for="photoFrom">From</label><input id="photoFrom" type="date"></div>
-          <div><label for="photoTo">To</label><input id="photoTo" type="date"></div>
-        </div>
-        <fieldset style="border:1px solid var(--line);border-radius:8px;margin:12px 0;padding:10px">
-          <legend>People — everyone selected must appear</legend>
-          <div id="photoPeople" class="row"><span class="hint">Connect your index to see named people.</span></div>
-        </fieldset>
-        <div class="row">
-          <label class="switch"><input id="photoInterpret" type="checkbox" checked>Recognise names in my search</label>
-          <label class="switch"><input id="photoSemantic" type="checkbox">Include meaning-based matches</label>
-          <button class="btn sec" id="photoSearchClear" type="button">Clear filters</button>
-        </div>
-      </form>
-      <p class="hint">People, dates and keywords work without a model server. Meaning-based search uses your configured embedding server. Put literal text in double quotes.</p>
-      <div id="photoSearchStatus" role="status" aria-live="polite"></div>
-      <div id="photoSearchApplied" class="row" style="margin:10px 0"></div>
-      <div id="photoSearchResults"></div>
-      <div id="photoSearchPages" class="row" style="margin-top:12px"></div>
-      <details id="photoSearchDetails" hidden><summary>How these results were found</summary><div id="photoSearchHow" class="hint"></div></details>
-    </div>
-  </section>
 
   <section id="tab-scan" hidden>
     <div class="card">
@@ -616,8 +608,8 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           Read from
           <select id="sFaceSrc" style="background:var(--panel2);border:1px solid var(--line);
             color:var(--text);border-radius:6px;padding:3px 7px;font-size:12px;font-family:inherit">
-            <option value="thumbs">Thumbnails — fast</option>
             <option value="originals">Originals — accurate, slow</option>
+            <option value="thumbs">Thumbnails — fast</option>
           </select>
         </label>
         <label class="switch" title="Skip photos already described as having nobody in them"
@@ -868,7 +860,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.25";
+const APP_VERSION = "0.6.26";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -955,6 +947,12 @@ const S = {
      thumbnail only yields a 112px face when the face fills 29% of the frame,
      which most snapshots do not. Decoding to 2048 puts a typical face well
      above 112px, and detection there costs 32ms. */
+  /* source defaults to "originals". Thumbnails are eight minutes against three
+     hours, which is why they were the default -- but a measured pass over this
+     library put 42% of the faces it found below the model's 112px input, and
+     the groups that came back were mostly one photo each. A fast answer that
+     cannot tell two people apart is not the cheaper option, it is the wrong
+     one, and the cost is paid again when it has to be redone. */
   /* flushEvery: how many photos accumulate before one write cycle. On a share
      where appending 200 bytes costs 4 to 17 seconds, writing per photo cannot
      finish; at 100 the write cost per photo falls by about fifty times. The
@@ -965,7 +963,7 @@ const S = {
            peopleOnly:true,
            threshold:0.42, faceresThreshold:0.75,
            minScore:0.4, minFacePx:40, refinePx:2048,
-           maxPerPhoto:20, source:"thumbs", readConcurrency:5 },
+           maxPerPhoto:20, source:"originals", readConcurrency:5 },
   backup: { enabled:true, keep:3, minNewRecords:1 },
   plan: null
 };
@@ -1066,8 +1064,8 @@ async function idbGet(k){ const db = await idb(); return new Promise((res, rej) 
    one still owns the <section> of that name; "Grid" is only what the lens is
    called on screen. */
 const TOPS = ["explore","scan","settings"];
-const VIEWS = ["library","timeline","people","search","chat","scan","settings"];
-const LENSES = ["library","timeline","people","search","chat"];
+const VIEWS = ["library","timeline","people","chat","scan","settings"];
+const LENSES = ["library","timeline","people","chat"];
 /* Favourites is not a view. It is a scope over the grid, and always was: the
    tab rendered the Library's section with a filter applied. */
 const VIEW_SECTION = { favourites:"library" };
@@ -1093,6 +1091,9 @@ function routeFromHash(hash){
   const [a, b] = h.split("/");
   if (a === "explore") return { view: LENSES.includes(b) ? b : "library" };
   if (a === "favourites") return { view:"library", scope:"favourites" };
+  /* Search was a tab and is now the field in the header, reachable from every
+     lens. Its old address lands on the grid, where its results are shown. */
+  if (a === "search") return { view:"library" };
   if (VIEWS.includes(a)) return { view:a };
   return null;                       // #selftest and the like are left alone
 }
@@ -1115,7 +1116,6 @@ function tabShownHook(name){
     if (typeof galSetView === "function"
         && GAL.view !== "search" && GAL.view !== curScope) galSetView(curScope);
   }
-  if (name === "search" && typeof onSearchShown === "function") onSearchShown();
   if (name === "chat" && typeof chatFillGrids === "function") chatFillGrids();
   if (name === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
   if (name === "people" && typeof onPeopleShown === "function") onPeopleShown();
@@ -4449,6 +4449,8 @@ function candidateSet(f){
   const occ   = f.occasion ? [].concat(f.occasion).map(s => String(s).toLowerCase()) : null;
   const who   = f.person ? [].concat(f.person).map(s => String(s).toLowerCase()) : null;
   const month = f.month ? String(f.month).padStart(2, "0") : null;
+  const exText = f.exclude_text
+    ? [].concat(f.exclude_text).map(s => String(s).toLowerCase()).filter(Boolean) : null;
   const sets  = f.photo_sets && f.photo_sets.length ? f.photo_sets : null;   // every set must contain the photo
   if (who) for (const name of who){
     if (FACES.people.filter(p => personKey(p.name) === personKey(name)).length > 1)
@@ -4479,6 +4481,12 @@ function candidateSet(f){
       const needle = String(f.text).toLowerCase();
       if (!textOf(r).toLowerCase().includes(needle)) continue;
     }
+    /* Exclusion. The engine could already leave a PERSON out; there was no way
+       to leave a WORD out, and no way to ask for either from the interface --
+       only the chat agent could. "-screenshot" is the commonest thing anyone
+       wants from a photo search and it could not be expressed. */
+    if (exText && exText.some(n => (textOf(r) + " " + (r.caption || "")).toLowerCase().includes(n)))
+      continue;
     if (f.has_text === true && !(r.text_chars > 0)) continue;
     if (ents){
       const bag = new Set([...(r.objects||[]), ...(r.activities||[]),
@@ -9598,13 +9606,15 @@ function showPersonPhotos(g, label){
     const f = FACES.faces.get(fid);
     if (f) ids.add(f.photo_id);
   }
+  /* A named group becomes a person chip in the one search field, so the result
+     is an ordinary search: it can be narrowed further, viewed, selected and
+     looked at by date. It used to open a separate Search page whose results
+     could do none of that. */
   if (g.name){
-    document.querySelector('nav [data-tab="search"]').click();
-    renderSearchPeople();
-    $("#photoQuery").value = ""; $("#photoPlace").value = "";
-    $("#photoFrom").value = ""; $("#photoTo").value = "";
-    for (const input of $("#photoPeople").querySelectorAll("input")) input.checked = input.value === g.id;
-    submitPhotoSearch(); return;
+    GAL.chips = [{ kind:"person", id:g.id, label:g.name }];
+    GAL.texts = [];
+    if (typeof sgRenderChips === "function") sgRenderChips();
+    runSearch(); return;
   }
   const recs = [...ids].map(id => IDX.records.get(id)).filter(r => r && !r.deleted && !r.hidden && r.status !== "error" && !r.probe)
     .sort((a, b) => (b.date_taken || "").localeCompare(a.date_taken || ""));
@@ -10273,7 +10283,12 @@ $("#chatSave").onclick = async () => {
    Nothing here calls a model except the ordinary text search, which embeds the
    query when an embedding model is selected, exactly as chat does. */
 
-const SG = { open:false, items:[], sel:0, facts:null, key:"", run:0 };
+const SG = { open:false, items:[], sel:0, facts:null, key:"", run:0,
+  /* The Search tab's boxes, kept as state rather than as a separate page.
+     interpret defaults OFF here: a person is chosen as a chip, so leaving name
+     interpretation on made any typed word that matched a name a hidden hard
+     filter -- and two people sharing a name threw the whole search away. */
+  filters: { from:"", to:"", place:"", interpret:false, semantic:true } };
 
 const sgLive = r => !!r && !r.deleted && !r.hidden && r.status !== "error" && !r.probe;
 
@@ -10530,7 +10545,7 @@ function sgArgs(){
      "Search failed". The chips carry the people; the text is just text. */
   const F = sgFacts(), a = { limit:100000, max:100000, photo_sets:[],
                              interpret_people:false };
-  const types = [], things = [], occ = [];
+  const types = [], things = [], occ = [], exclude = [];
   for (const c of GAL.chips){
     if (c.kind === "person") a.photo_sets.push((F.people.find(p => p.id === c.id) || { ids:new Set() }).ids);
     else if (c.kind === "faces") a.photo_sets.push(F.withFaces);
@@ -10546,8 +10561,63 @@ function sgArgs(){
   if (types.length) a.image_type = types;
   if (things.length) a.entities = things;
   if (occ.length) a.occasion = occ;
-  if (GAL.texts.length) a.query = GAL.texts.join(" ");
+
+  /* Operators typed into the field. The Search tab offered these as separate
+     boxes on a separate page; here they are part of what you type, so they
+     narrow whatever you are already looking at instead of taking you somewhere
+     else. A chip still beats them: chips are exact, text is a guess. */
+  const words = [];
+  for (const t of GAL.texts){
+    const raw = String(t).trim();
+    if (!raw) continue;
+    const neg = /^-(\S.*)$/.exec(raw);
+    if (neg){ exclude.push(neg[1].trim()); continue; }
+    const pl = /^place:\s*(.+)$/i.exec(raw);
+    if (pl){ a.place = pl[1].trim(); continue; }
+    const rng = sgDateRange(raw);
+    if (rng){ a.date_from = rng.from; a.date_to = rng.to; continue; }
+    words.push(raw);
+  }
+  if (words.length) a.query = words.join(" ");
+
+  /* "-anna" means the person where that names one, and the word otherwise. */
+  if (exclude.length){
+    const exIds = [], exWords = [];
+    for (const term of exclude){
+      const k = term.toLowerCase();
+      const hit = F.people.filter(p => p.named && p.label.toLowerCase() === k);
+      if (hit.length === 1) exIds.push(hit[0].id); else exWords.push(term);
+    }
+    if (exIds.length) a.exclude_person_ids = exIds;
+    if (exWords.length) a.exclude_text = exWords;
+  }
+
+  /* The panel under the field, for anyone who would rather click than type. */
+  const f = SG.filters;
+  if (f.from) a.date_from = f.from;
+  if (f.to) a.date_to = f.to;
+  if (f.place) a.place = f.place;
+  if (f.interpret) a.interpret_people = true;
+  if (!f.semantic) a.semantic = false;
   return a;
+}
+
+/* "2019..2021", "2019-06..2019-08", "2019-06-01..2019-06-30". A bare year is
+   left alone: it is already a chip with a count beside it, which is better. */
+function sgDateRange(raw){
+  const m = /^(\d{4}(?:-\d{2}(?:-\d{2})?)?)\s*\.\.\s*(\d{4}(?:-\d{2}(?:-\d{2})?)?)$/.exec(raw);
+  if (!m) return null;
+  const lo = p => p.length === 4 ? p + "-01-01" : p.length === 7 ? p + "-01" : p;
+  const hi = p => {
+    if (p.length === 4) return p + "-12-31";
+    if (p.length === 7){
+      const [y, mo] = p.split("-").map(Number);
+      return p + "-" + String(new Date(y, mo, 0).getDate()).padStart(2, "0");
+    }
+    return p;
+  };
+  const from = lo(m[1]), to = hi(m[2]);
+  return from <= to ? { from, to } : { from:lo(m[2]), to:hi(m[1]) };
 }
 
 async function runSearch(quiet){
@@ -10578,6 +10648,14 @@ async function runSearch(quiet){
 function clearSearch(){
   SG.run++;
   GAL.chips = []; GAL.texts = []; GAL.results = [];
+  /* Clearing the search clears its filters: leaving a date range armed behind
+     an empty field is how the next search comes back mysteriously empty. */
+  if ($("#sgFrom")){
+    $("#sgFrom").value = ""; $("#sgTo").value = ""; $("#sgPlace").value = "";
+    $("#sgInterpret").checked = false; $("#sgSemantic").checked = true;
+    SG.filters = { from:"", to:"", place:"", interpret:false, semantic:true };
+    if (typeof sgRenderFilters === "function") sgRenderFilters();
+  }
   if (GAL.view === "search") GAL.view = "all";
   galBuild(); galBar(); galClear(); galLayout();
   galMessage(GAL.list.length ? "" : "Nothing indexed yet — run a scan first.");
@@ -10585,6 +10663,53 @@ function clearSearch(){
 function galDropChip(i){ GAL.chips.splice(i, 1); sgRenderChips(); runSearch(); }
 function galDropText(i){ GAL.texts.splice(i, 1); sgRenderChips(); runSearch(); }
 $("#galClearSearch").onclick = clearSearch;
+
+/* ---- the filters panel ---- */
+function sgFiltersActive(){
+  const f = SG.filters;
+  return (f.from ? 1 : 0) + (f.to ? 1 : 0) + (f.place ? 1 : 0)
+       + (f.interpret ? 1 : 0) + (f.semantic ? 0 : 1);
+}
+function sgRenderFilters(){
+  const n = sgFiltersActive();
+  $("#sgFilterCount").textContent = n ? n + (n === 1 ? " filter" : " filters") : "";
+  $("#sgMoreBtn").classList.toggle("on", n > 0);
+}
+function sgReadFilters(){
+  const f = SG.filters;
+  f.from = $("#sgFrom").value; f.to = $("#sgTo").value;
+  f.place = $("#sgPlace").value.trim();
+  f.interpret = $("#sgInterpret").checked;
+  f.semantic = $("#sgSemantic").checked;
+  /* A range the wrong way round is a slip, not a question: swap it rather than
+     refusing and making the person work out which box was wrong. */
+  if (f.from && f.to && f.from > f.to){
+    const t = f.from; f.from = f.to; f.to = t;
+    $("#sgFrom").value = f.from; $("#sgTo").value = f.to;
+  }
+  sgRenderFilters();
+}
+function sgFiltersChanged(){
+  sgReadFilters();
+  /* Filters narrow what you are looking at, so they only run a search when
+     there is one -- otherwise setting a date would silently empty the grid. */
+  if (GAL.chips.length || GAL.texts.length) runSearch();
+}
+$("#sgMoreBtn").onclick = () => {
+  const open = $("#sgMore").hidden;
+  $("#sgMore").hidden = !open;
+  $("#sgMoreBtn").setAttribute("aria-expanded", String(open));
+  if (open) $("#sgFrom").focus();
+};
+for (const id of ["sgFrom","sgTo","sgInterpret","sgSemantic"])
+  $("#" + id).onchange = sgFiltersChanged;
+$("#sgPlace").onchange = sgFiltersChanged;
+$("#sgFiltersClear").onclick = () => {
+  $("#sgFrom").value = ""; $("#sgTo").value = ""; $("#sgPlace").value = "";
+  $("#sgInterpret").checked = false; $("#sgSemantic").checked = true;
+  sgFiltersChanged();
+};
+sgRenderFilters();
 
 /* ---- the field ---- */
 {
@@ -10631,109 +10756,6 @@ $("#galClearSearch").onclick = clearSearch;
 }
 
 sgRenderChips();
-
-/* ==================== 88-searchui.js ==================== */
-/* Direct retrieval never needs the chat model. Filters are visible and results
-   are paginated, so a family album does not quietly stop at twelve photos. */
-const SEARCH_UI = { request:0, abort:null, offset:0, pinned:[], filters:null };
-
-function renderSearchPeople(){
-  const host = $("#photoPeople");
-  const selected = new Set([...host.querySelectorAll("input:checked")].map(x => x.value));
-  host.textContent = "";
-  for (const p of FACES.people.filter(p => p.name).sort((a,b) => a.name.localeCompare(b.name))){
-    const label = el("label", "switch");
-    const input = el("input"); input.type = "checkbox"; input.value = p.id;
-    input.checked = selected.has(p.id);
-    label.append(input, document.createTextNode(p.name)); host.append(label);
-  }
-  if (!host.children.length) host.append(el("span", "hint", "Name a group in People to search for someone."));
-}
-
-async function openSearchIndex(){
-  if (!IDX.loaded){
-    if (!(await ensureIndexConnected()) || !(await ensureConnected("photo search")))
-      throw new Error("Connect your photo index in Settings to search it.");
-    await indexOp("opening photo search", async () => {
-      await ensureIndex(null, { write:false });
-      await loadRecords(); await loadVectors(); await ensureFaceNames();
-      rebuildDerived();
-    }, { cost:8 });
-  } else await ensureFaceNames();
-}
-async function onSearchShown(){
-  renderSearchPeople();
-  $("#photoQuery").focus();
-}
-function clearSearchResults(){
-  for (const id of SEARCH_UI.pinned) thumbUnpin(id);
-  SEARCH_UI.pinned = [];
-  $("#photoSearchResults").textContent = "";
-  $("#photoSearchPages").textContent = "";
-}
-async function submitPhotoSearch(offset = 0){
-  const request = ++SEARCH_UI.request;
-  if (SEARCH_UI.abort) SEARCH_UI.abort.abort();
-  const abort = new AbortController(); SEARCH_UI.abort = abort;
-  const status = $("#photoSearchStatus");
-  status.textContent = "Opening your index…";
-  clearSearchResults();
-  $("#photoSearchApplied").textContent = "";
-  $("#photoSearchDetails").hidden = true;
-  try {
-    await openSearchIndex();
-    if (request !== SEARCH_UI.request) return;
-    renderSearchPeople();
-    const filters = offset && SEARCH_UI.filters ? SEARCH_UI.filters : {
-      query:$("#photoQuery").value.trim(), place:$("#photoPlace").value.trim(),
-      date_from:$("#photoFrom").value, date_to:$("#photoTo").value,
-      person_ids:[...$("#photoPeople").querySelectorAll("input:checked")].map(x => x.value),
-      semantic:$("#photoSemantic").checked, interpret_people:$("#photoInterpret").checked
-    };
-    if (filters.date_from && filters.date_to && filters.date_from > filters.date_to)
-      throw new Error("The From date must be on or before the To date.");
-    SEARCH_UI.filters = filters;
-    status.textContent = "Searching…";
-    const result = await searchPhotos({ ...filters, offset, limit:60, signal:abort.signal });
-    if (request !== SEARCH_UI.request) return;
-    const applied = [...result.applied];
-    if (filters.place) applied.push("Place: " + filters.place);
-    if (filters.date_from) applied.push("From " + filters.date_from);
-    if (filters.date_to) applied.push("To " + filters.date_to);
-    for (const label of applied) $("#photoSearchApplied").append(el("span", "pill", label));
-    status.textContent = result.total ? result.total.toLocaleString() + " matching photos"
-      : "No photos match. Try fewer filters, another word, or review the person's group in People.";
-    if (result.results.length){
-      const records = result.results.map(x => x.rec);
-      SEARCH_UI.pinned = records.map(r => r.id);
-      renderGrid($("#photoSearchResults"), records);
-    }
-    const pages = $("#photoSearchPages");
-    if (result.total){
-      const prev = el("button", "btn sec", "Previous"); prev.disabled = !offset;
-      prev.onclick = () => submitPhotoSearch(Math.max(0, offset - 60));
-      const next = el("button", "btn sec", "Next"); next.disabled = offset + 60 >= result.total;
-      next.onclick = () => submitPhotoSearch(offset + 60);
-      pages.append(prev, el("span", "hint", (offset + 1) + "–"
-        + (offset + result.results.length) + " of " + result.total), next);
-    }
-    $("#photoSearchHow").textContent = result.used.join(". ");
-    $("#photoSearchDetails").hidden = false;
-  } catch (e){
-    if (request === SEARCH_UI.request) status.textContent = "Could not search: " + errText(e);
-  }
-}
-$("#photoSearchForm").onsubmit = e => { e.preventDefault(); submitPhotoSearch(); };
-$("#photoSearchClear").onclick = () => {
-  ++SEARCH_UI.request; if (SEARCH_UI.abort) SEARCH_UI.abort.abort();
-  $("#photoSearchForm").reset();
-  for (const input of $("#photoPeople").querySelectorAll("input")) input.checked = false;
-  SEARCH_UI.filters = null; clearSearchResults();
-  $("#photoSearchApplied").textContent = "";
-  $("#photoSearchStatus").textContent = "Filters cleared. Search again to browse your photos.";
-  $("#photoSearchDetails").hidden = true;
-  $("#photoQuery").focus();
-};
 
 /* ==================== 89-restore.js ==================== */
 /* ================= survive a refresh =================
@@ -13308,10 +13330,20 @@ async function selfTest(){
       eq("extra parameters after a tab are ignored", tabFromHash("#people&x=1"), "people");
       eq("a leading slash is tolerated", tabFromHash("#/settings"), "settings");
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
+      eq("the old Search address lands on the grid, where its results are shown",
+         tabFromHash("#search"), "library");
       eq("#selftest is not a tab", tabFromHash("#selftest"), null);
       eq("nor is #selftest with parameters", tabFromHash("#selftest&heic=file:///x.heic"), null);
       eq("an unknown name is not a tab", tabFromHash("#nonsense"), null);
       eq("an empty address is not a tab", tabFromHash(""), null);
+      /* The shipped default, read from the page's own source, because
+         loadSettings only ever overlays what is stored on top of it -- so no
+         amount of poking at S can tell you what a fresh install would get. */
+      {
+        const src = (document.querySelector("script:not([src])") || {}).textContent || "";
+        const m = /faces:\s*\{[\s\S]{0,400}?source:\s*"([a-z]+)"/.exec(src);
+        eq("a fresh install reads originals", m && m[1], "originals");
+      }
       eq("every top-level tab has a button", TOPS.length,
          document.querySelectorAll("nav button").length);
       eq("every lens has a button", LENSES.length,
@@ -13772,6 +13804,25 @@ async function selfTest(){
             loadSettings();
             eq("a current threshold is respected", S.faces.threshold, 0.38);
             eq("and so is the faceres one", S.faces.faceresThreshold, 0.8);
+
+            /* Reading originals is the default now. Thumbnails are eight
+               minutes against three hours, but a measured pass put 42% of the
+               faces below the model's 112px input, so the fast answer could
+               not tell two people apart and the work had to be done again.
+               The declared default is asserted where it is declared, below;
+               here, that a saved choice still beats it. */
+            ok("the control offers originals first",
+               $("#sFaceSrc").options[0].value === "originals",
+               $("#sFaceSrc").options[0].value);
+            localStorage.setItem(LS_KEY, JSON.stringify({ faces: { source:"thumbs" } }));
+            S.faces.source = "originals";
+            loadSettings();
+            eq("a saved choice of thumbnails still wins", S.faces.source, "thumbs");
+            localStorage.setItem(LS_KEY, JSON.stringify({ faces: { embedder:"arcface" } }));
+            S.faces.source = "originals";
+            loadSettings();
+            eq("and settings that say nothing about it leave it alone",
+               S.faces.source, "originals");
           } finally {
             if (savedRaw != null) localStorage.setItem(LS_KEY, savedRaw);
             else localStorage.removeItem(LS_KEY);
@@ -14568,6 +14619,21 @@ async function consumerSelfTest(scratch){
     result = await searchPhotos({ query:"Anna", place:"London", semantic:false });
     eq("person and place filters intersect", result.total, 0);
     eq("person and date filters intersect", (await searchPhotos({ query:"Anna", date_from:"2025-01-01" })).total, 0);
+    /* Leaving a word out had no way to be ASKED FOR: the engine could exclude a
+       person, never a word, and neither was reachable from the interface. */
+    {
+      const all = (await searchPhotos({ query:"", limit:200 })).total;
+      eq("the album is all there to start with", all, 75);
+      const left = await searchPhotos({ query:"", limit:200, exclude_text:["holiday"] });
+      ok("excluding a word actually removes photos", left.total < all,
+         left.total + " of " + all);
+      ok("and removes exactly the ones carrying it",
+         !left.results.some(x => /holiday/i.test(x.rec.caption || "")),
+         JSON.stringify(left.results.slice(0,2).map(x => x.rec.caption)));
+      ok("leaving the rest alone", left.results.every(x => /garden/.test(x.rec.caption)));
+      eq("excluding a word that appears nowhere changes nothing",
+         (await searchPhotos({ query:"", limit:200, exclude_text:["zzzznothing"] })).total, all);
+    }
     eq("a user can search a name as ordinary text", peopleSearchArgs({ query:"Anna beach", interpret_people:false }).args.person_ids, []);
     ok("an explicit unknown name gives an actionable error", await rejected(() => searchPhotos({ query:'person:"Nobody"' })));
     const first = await searchPhotos({ query:"", limit:60 });
@@ -14579,19 +14645,80 @@ async function consumerSelfTest(scratch){
     ok("ambiguous names ask for an explicit person selection", await rejected(() => searchPhotos({ query:"Anna" })));
     ok("chat filters cannot silently choose between duplicate names", await rejected(() => searchPhotos({ query:"", person:["Anna"] })));
     FACES.people.pop();
-    // Exercise the actual form/rendering path with the server disabled.
+    /* RS-3: the Search tab is gone, so exercise the one field that replaced it.
+       Everything the tab could express has to still be expressible here, or
+       deleting it lost capability rather than removing a detour. */
     const wasLoaded = IDX.loaded; IDX.loaded = true;
-    renderSearchPeople();
-    $("#photoQuery").value = "Anna and Ben"; $("#photoSemantic").checked = false;
-    await submitPhotoSearch();
-    eq("the Search screen shows the required people", [...$("#photoSearchApplied").children].map(x => x.textContent), ["With Anna","With Ben"]);
-    ok("the Search screen renders matching thumbnails", $("#photoSearchResults").querySelectorAll("figure").length === 1);
-    $("#photoSearchClear").click();
-    eq("clearing filters clears old results", $("#photoSearchResults").children.length, 0);
-    $("#photoFrom").value = "2025-01-01"; $("#photoTo").value = "2024-01-01";
-    await submitPhotoSearch();
-    ok("invalid date bounds have readable feedback", /From date/.test($("#photoSearchStatus").textContent));
-    $("#photoSearchClear").click(); IDX.loaded = wasLoaded;
+    const keepChips = GAL.chips, keepTexts = GAL.texts, keepF = { ...SG.filters };
+    try {
+      GAL.chips = []; GAL.texts = ["beach"]; SG.filters = { from:"", to:"", place:"",
+        interpret:false, semantic:true };
+
+      GAL.texts = ["-screenshot"];
+      let a = sgArgs();
+      eq("a minus sign leaves a word out", JSON.stringify(a.exclude_text), '["screenshot"]');
+      ok("and it is not also searched for", !a.query);
+
+      GAL.texts = ["-Anna"];
+      a = sgArgs();
+      ok("a minus sign in front of a name leaves that PERSON out",
+         (a.exclude_person_ids || []).length === 1, JSON.stringify(a.exclude_person_ids));
+      ok("so it is not treated as a word", !(a.exclude_text || []).length);
+
+      GAL.texts = ["place:Sicily"];
+      eq("place: narrows by place", sgArgs().place, "Sicily");
+
+      GAL.texts = ["2019..2021"];
+      a = sgArgs();
+      eq("a year range starts at the first day", a.date_from, "2019-01-01");
+      eq("and ends at the last", a.date_to, "2021-12-31");
+      GAL.texts = ["2019-02..2020-02"];
+      a = sgArgs();
+      eq("a month range ends on the real last day of that month", a.date_to, "2020-02-29");
+      GAL.texts = ["2021..2019"];
+      eq("a range the wrong way round still means that range", sgArgs().date_from, "2019-01-01");
+
+      GAL.texts = ["beach", "-dog", "place:Erice"];
+      a = sgArgs();
+      eq("the words that are left are the query", a.query, "beach");
+      eq("alongside the operators", JSON.stringify([a.exclude_text, a.place]),
+         '[["dog"],"Erice"]');
+
+      /* The panel under the field: the tab's own boxes, kept. */
+      GAL.texts = ["beach"];
+      $("#sgFrom").value = "2020-03-01"; $("#sgTo").value = "2020-01-01";
+      $("#sgPlace").value = "Erice"; $("#sgInterpret").checked = true;
+      $("#sgSemantic").checked = false;
+      sgReadFilters();
+      eq("a backwards date range is swapped, not refused", SG.filters.from, "2020-01-01");
+      eq("and the boxes are corrected on screen", $("#sgFrom").value, "2020-01-01");
+      a = sgArgs();
+      eq("the panel's dates reach the search", a.date_to, "2020-03-01");
+      eq("so does its place", a.place, "Erice");
+      eq("name interpretation is off unless asked for", a.interpret_people, true);
+      eq("and meaning-based matching can be turned off", a.semantic, false);
+      eq("the field says how many filters are set", $("#sgFilterCount").textContent, "5 filters");
+
+      $("#sgFiltersClear").click();
+      eq("clearing resets them", sgFiltersActive(), 0);
+      eq("and says nothing", $("#sgFilterCount").textContent, "");
+      a = sgArgs();
+      ok("name interpretation goes back off, which the chips depend on",
+         a.interpret_people === false);
+
+      /* A search left behind with its filters still armed is how the next one
+         comes back mysteriously empty. */
+      GAL.texts = ["beach"]; $("#sgPlace").value = "Nowhere"; sgReadFilters();
+      clearSearch();
+      eq("clearing the search clears its filters too", SG.filters.place, "");
+      eq("including on screen", $("#sgPlace").value, "");
+    } finally {
+      GAL.chips = keepChips; GAL.texts = keepTexts; SG.filters = keepF;
+      $("#sgFrom").value = ""; $("#sgTo").value = ""; $("#sgPlace").value = "";
+      $("#sgInterpret").checked = false; $("#sgSemantic").checked = true;
+      sgRenderFilters();
+    }
+    IDX.loaded = wasLoaded;
     const one = FACES.faces.get("a"), originalEngine = one.engine;
     one.engine = "old-incompatible-model";
     ok("incompatible face spaces cannot be regrouped", await rejected(async () => clusterFaces()));

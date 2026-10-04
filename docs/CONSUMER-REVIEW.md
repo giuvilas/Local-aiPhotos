@@ -77,7 +77,7 @@ version is retained. Damaged people files produce an error rather than an empty
 library. The screen adds conflict notices, name filtering, keyboard selection,
 bounded group/face rendering and review actions.
 
-**2. Direct retrieval without chat.** The Search tab promotes known unquoted names
+**2. Direct retrieval without chat.** The search field promotes known unquoted names
 to hard filters, requires everyone named/selected, supports `without Anna`, and
 combines people with place/date controls. `Ann` cannot match `Anna`; quoted text
 remains literal; duplicate names require a person selection. Name interpretation

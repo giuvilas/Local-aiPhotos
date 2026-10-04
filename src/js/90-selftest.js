@@ -2480,10 +2480,20 @@ async function selfTest(){
       eq("extra parameters after a tab are ignored", tabFromHash("#people&x=1"), "people");
       eq("a leading slash is tolerated", tabFromHash("#/settings"), "settings");
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
+      eq("the old Search address lands on the grid, where its results are shown",
+         tabFromHash("#search"), "library");
       eq("#selftest is not a tab", tabFromHash("#selftest"), null);
       eq("nor is #selftest with parameters", tabFromHash("#selftest&heic=file:///x.heic"), null);
       eq("an unknown name is not a tab", tabFromHash("#nonsense"), null);
       eq("an empty address is not a tab", tabFromHash(""), null);
+      /* The shipped default, read from the page's own source, because
+         loadSettings only ever overlays what is stored on top of it -- so no
+         amount of poking at S can tell you what a fresh install would get. */
+      {
+        const src = (document.querySelector("script:not([src])") || {}).textContent || "";
+        const m = /faces:\s*\{[\s\S]{0,400}?source:\s*"([a-z]+)"/.exec(src);
+        eq("a fresh install reads originals", m && m[1], "originals");
+      }
       eq("every top-level tab has a button", TOPS.length,
          document.querySelectorAll("nav button").length);
       eq("every lens has a button", LENSES.length,
@@ -2944,6 +2954,25 @@ async function selfTest(){
             loadSettings();
             eq("a current threshold is respected", S.faces.threshold, 0.38);
             eq("and so is the faceres one", S.faces.faceresThreshold, 0.8);
+
+            /* Reading originals is the default now. Thumbnails are eight
+               minutes against three hours, but a measured pass put 42% of the
+               faces below the model's 112px input, so the fast answer could
+               not tell two people apart and the work had to be done again.
+               The declared default is asserted where it is declared, below;
+               here, that a saved choice still beats it. */
+            ok("the control offers originals first",
+               $("#sFaceSrc").options[0].value === "originals",
+               $("#sFaceSrc").options[0].value);
+            localStorage.setItem(LS_KEY, JSON.stringify({ faces: { source:"thumbs" } }));
+            S.faces.source = "originals";
+            loadSettings();
+            eq("a saved choice of thumbnails still wins", S.faces.source, "thumbs");
+            localStorage.setItem(LS_KEY, JSON.stringify({ faces: { embedder:"arcface" } }));
+            S.faces.source = "originals";
+            loadSettings();
+            eq("and settings that say nothing about it leave it alone",
+               S.faces.source, "originals");
           } finally {
             if (savedRaw != null) localStorage.setItem(LS_KEY, savedRaw);
             else localStorage.removeItem(LS_KEY);

@@ -75,6 +75,8 @@ function candidateSet(f){
   const occ   = f.occasion ? [].concat(f.occasion).map(s => String(s).toLowerCase()) : null;
   const who   = f.person ? [].concat(f.person).map(s => String(s).toLowerCase()) : null;
   const month = f.month ? String(f.month).padStart(2, "0") : null;
+  const exText = f.exclude_text
+    ? [].concat(f.exclude_text).map(s => String(s).toLowerCase()).filter(Boolean) : null;
   const sets  = f.photo_sets && f.photo_sets.length ? f.photo_sets : null;   // every set must contain the photo
   if (who) for (const name of who){
     if (FACES.people.filter(p => personKey(p.name) === personKey(name)).length > 1)
@@ -105,6 +107,12 @@ function candidateSet(f){
       const needle = String(f.text).toLowerCase();
       if (!textOf(r).toLowerCase().includes(needle)) continue;
     }
+    /* Exclusion. The engine could already leave a PERSON out; there was no way
+       to leave a WORD out, and no way to ask for either from the interface --
+       only the chat agent could. "-screenshot" is the commonest thing anyone
+       wants from a photo search and it could not be expressed. */
+    if (exText && exText.some(n => (textOf(r) + " " + (r.caption || "")).toLowerCase().includes(n)))
+      continue;
     if (f.has_text === true && !(r.text_chars > 0)) continue;
     if (ents){
       const bag = new Set([...(r.objects||[]), ...(r.activities||[]),

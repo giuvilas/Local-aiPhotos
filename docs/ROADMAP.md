@@ -66,7 +66,7 @@ The gap was mostly **browsing** and **two whole media types**, not intelligence.
 | Library (all photos in one grid, zoom viewer) | **built**, 1 October 2026 |
 | Remove from library (hide, undo, restore) | **built**, 1 October 2026 |
 | Rotate photos from the Library (view-only, undoable) | **built**, 1 October 2026 |
-| Favourites (hearts, a Favourites tab, a search chip) | **built**, 2 October 2026 |
+| Favourites (hearts, a scope, a search chip) | **built**, 2 October 2026; the tab became a scope in v0.6.24 |
 | Any OpenAI-compatible server, not only LM Studio | **built**, 1 October 2026 |
 | Video | not started |
 | Perceptual hash, near-duplicates and bursts | not started |
@@ -406,7 +406,7 @@ wanting it by date means starting again.
 |---|---|---:|
 | RS-1 | **Built** (v0.6.24). Routing and shell: three tabs, lens and scope controls, hash routes, scope preserved across lens switches | 2 |
 | RS-2 | **Built** (v0.6.25). Explore: one record list behind every lens, so scope and search reach the Timeline; selection and scroll position survive a lens switch | 1.5 |
-| RS-3 | Search unification — delete the Search tab, fold its exclusion, dates and toggles into the header field | 1 |
+| RS-3 | **Built** (v0.6.26). Search unification — the Search tab is gone; its dates, place, toggles and real exclusion live in the one field | 1 |
 | RS-4 | Scan: Photos · Faces · Maintenance, with a status rail | 1.5 |
 | RS-5 | Settings: Connection · Library · Scanning · Privacy & data · Diagnostics | 1.5 |
 | RS-6 | Chat drawer; its answers populate the grid behind it | 1 |
@@ -522,16 +522,13 @@ both ship their own self-tests:
 | Results | Library grid, paged | own list, paged |
 | People | chips resolved to photo sets | required-person filter, exclusions |
 
-Decide one of: keep the header field and retire the Search tab; keep both with the tab as
-the advanced surface; or merge the tab's filters into the chip grammar. Until that is
-decided, rename one module out of slot 88, which currently holds two files.
+**Resolved in v0.6.26 (RS-3).** The header field was kept and the Search tab deleted. Its
+dates, place and both toggles became a Filters panel under the lens bar, and its filters became
+typed operators: `-screenshot` leaves a word out, `-Anna` leaves a person out, `place:Sicily`
+narrows by place, `2019..2021` by date. Exclusion of a WORD did not exist anywhere before and
+had to be added to the engine; excluding a person existed but was reachable only by the chat
+agent, never by a person using the app.
 
-Two defects to fix while porting: `photo_sets` is unguarded, so a hallucinated tool
-argument throws a `TypeError` from `runTool`; and `args.max` removes the 60-result cap that
-protects the chat context. Their `month` filter also slices the UTC month while the local
-`r.when.month` sits unused.
-
-Acceptance: a person chip returns exactly the photos the Search tab returns for the same
 person; no tool argument can throw; the chat cap still holds for chat.
 
 ### Out of scope for MU

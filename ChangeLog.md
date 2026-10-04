@@ -15,94 +15,142 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
-- [0.6.25 (2026-10-04)](#0625-2026-10-04)
+- [0.6.26 (2026-10-04)](#0626-2026-10-04)
   - [Changed](#changed)
+  - [Added](#added)
+  - [Removed](#removed)
+- [0.6.25 (2026-10-04)](#0625-2026-10-04)
+  - [Changed](#changed-1)
   - [Fixed](#fixed)
 - [0.6.24 (2026-10-04)](#0624-2026-10-04)
-  - [Changed](#changed-1)
+  - [Changed](#changed-2)
   - [Fixed](#fixed-1)
 - [0.6.23 (2026-10-04)](#0623-2026-10-04)
   - [Fixed](#fixed-2)
-  - [Added](#added)
-- [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-1)
+- [0.6.22 (2026-10-03)](#0622-2026-10-03)
+  - [Added](#added-2)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
   - [Fixed](#fixed-3)
-  - [Changed](#changed-2)
-- [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-3)
-- [0.6.19 (2026-10-02)](#0619-2026-10-02)
+- [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-4)
+- [0.6.19 (2026-10-02)](#0619-2026-10-02)
+  - [Changed](#changed-5)
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
-  - [Added](#added-2)
+  - [Added](#added-3)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
   - [Fixed](#fixed-4)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
-  - [Added](#added-3)
+  - [Added](#added-4)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
   - [Fixed](#fixed-5)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
-  - [Changed](#changed-5)
-- [0.6.13 (2026-10-02)](#0613-2026-10-02)
   - [Changed](#changed-6)
-- [0.6.12 (2026-10-02)](#0612-2026-10-02)
-  - [Added](#added-4)
-- [0.6.11 (2026-10-02)](#0611-2026-10-02)
-  - [Added](#added-5)
-- [0.6.10 (2026-10-02)](#0610-2026-10-02)
+- [0.6.13 (2026-10-02)](#0613-2026-10-02)
   - [Changed](#changed-7)
-- [0.6.9 (2026-10-02)](#069-2026-10-02)
-  - [Changed](#changed-8)
-- [0.6.8 (2026-10-02)](#068-2026-10-02)
+- [0.6.12 (2026-10-02)](#0612-2026-10-02)
+  - [Added](#added-5)
+- [0.6.11 (2026-10-02)](#0611-2026-10-02)
   - [Added](#added-6)
+- [0.6.10 (2026-10-02)](#0610-2026-10-02)
+  - [Changed](#changed-8)
+- [0.6.9 (2026-10-02)](#069-2026-10-02)
+  - [Changed](#changed-9)
+- [0.6.8 (2026-10-02)](#068-2026-10-02)
+  - [Added](#added-7)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
   - [Fixed](#fixed-6)
 - [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-7)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
-  - [Added](#added-7)
-- [0.6.4 (2026-10-02)](#064-2026-10-02)
   - [Added](#added-8)
-- [0.6.3 (2026-10-01)](#063-2026-10-01)
+- [0.6.4 (2026-10-02)](#064-2026-10-02)
   - [Added](#added-9)
-  - [Changed](#changed-9)
-- [0.6.2 (2026-10-01)](#062-2026-10-01)
+- [0.6.3 (2026-10-01)](#063-2026-10-01)
   - [Added](#added-10)
   - [Changed](#changed-10)
-- [0.6.1 (2026-10-01)](#061-2026-10-01)
+- [0.6.2 (2026-10-01)](#062-2026-10-01)
   - [Added](#added-11)
   - [Changed](#changed-11)
-- [0.6.0 (2026-10-01)](#060-2026-10-01)
+- [0.6.1 (2026-10-01)](#061-2026-10-01)
   - [Added](#added-12)
   - [Changed](#changed-12)
-- [0.5.4 (2026-10-01)](#054-2026-10-01)
+- [0.6.0 (2026-10-01)](#060-2026-10-01)
+  - [Added](#added-13)
   - [Changed](#changed-13)
+- [0.5.4 (2026-10-01)](#054-2026-10-01)
+  - [Changed](#changed-14)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
   - [Fixed](#fixed-8)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
-  - [Added](#added-13)
-  - [Changed](#changed-14)
-- [0.5.1 (2026-10-01)](#051-2026-10-01)
-  - [Changed](#changed-15)
-- [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-14)
+  - [Changed](#changed-15)
+- [0.5.1 (2026-10-01)](#051-2026-10-01)
   - [Changed](#changed-16)
-  - [Fixed](#fixed-9)
-- [0.4.0 (2026-10-01)](#040-2026-10-01)
+- [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-15)
   - [Changed](#changed-17)
-- [0.3.0 (2026-09-30)](#030-2026-09-30)
+  - [Fixed](#fixed-9)
+- [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-16)
   - [Changed](#changed-18)
-  - [Fixed](#fixed-10)
-- [0.2.0 (2026-09-29)](#020-2026-09-29)
+- [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-17)
   - [Changed](#changed-19)
+  - [Fixed](#fixed-10)
+- [0.2.0 (2026-09-29)](#020-2026-09-29)
+  - [Added](#added-18)
+  - [Changed](#changed-20)
   - [Fixed](#fixed-11)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
-  - [Added](#added-18)
+  - [Added](#added-19)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.26 (2026-10-04)
+
+**Summary:** one search field instead of two search experiences (**RS-3**), and face scans read
+originals by default.
+
+### Changed
+
+- **The Search tab is gone.** There were two ways to search — the field in the header and a tab
+  with its own boxes — and a field plus a destination contradict each other. Everything the tab
+  could express is now expressible in the one field, which narrows whatever lens you are already
+  looking at instead of taking you somewhere else. `src/js/88-searchui.js` is deleted.
+- **A Filters panel** under the lens bar carries what the tab's boxes carried: From and To
+  dates, Place, *Recognise names in my search* and *Include meaning-based matches*, with a count
+  beside the button so armed filters are never invisible. A range entered backwards is swapped
+  rather than refused — it is a slip, not a question.
+- **Typed operators**, for anyone who would rather type: `-screenshot` leaves a word out,
+  `-Anna` leaves a person out, `place:Sicily` narrows by place, and `2019..2021`,
+  `2019-06..2019-08` or a full date range narrows by date. A month range ends on that month's
+  real last day.
+- **Clearing a search clears its filters.** A date range left armed behind an empty field is
+  how the next search comes back mysteriously empty.
+- **Clicking a named person in People** now runs an ordinary search in the grid, so the result
+  can be narrowed further, viewed, selected and looked at by date. It used to open a separate
+  page whose results could do none of that.
+- **Face scans read originals by default.** Thumbnails are eight minutes against three hours,
+  which is why they were the default — but a measured pass over a real library put **42% of the
+  faces it found below the model's 112 px input**, and the groups that came back were mostly one
+  photo each. A fast answer that cannot tell two people apart is not the cheaper option. A saved
+  choice of thumbnails still wins.
+
+### Added
+
+- **Leaving a word out.** The engine could exclude a *person* and never a *word*, and neither
+  was reachable from the interface — only the chat agent could ask for it. `-screenshot` is
+  probably the commonest thing anyone wants from a photo search and it could not be expressed.
+
+### Removed
+
+- The `Search` lens, and the `#tab-search` section. `#search` still resolves, landing on the
+  grid where its results are shown.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.25 (2026-10-04)
 

@@ -465,6 +465,21 @@ async function consumerSelfTest(scratch){
     result = await searchPhotos({ query:"Anna", place:"London", semantic:false });
     eq("person and place filters intersect", result.total, 0);
     eq("person and date filters intersect", (await searchPhotos({ query:"Anna", date_from:"2025-01-01" })).total, 0);
+    /* Leaving a word out had no way to be ASKED FOR: the engine could exclude a
+       person, never a word, and neither was reachable from the interface. */
+    {
+      const all = (await searchPhotos({ query:"", limit:200 })).total;
+      eq("the album is all there to start with", all, 75);
+      const left = await searchPhotos({ query:"", limit:200, exclude_text:["holiday"] });
+      ok("excluding a word actually removes photos", left.total < all,
+         left.total + " of " + all);
+      ok("and removes exactly the ones carrying it",
+         !left.results.some(x => /holiday/i.test(x.rec.caption || "")),
+         JSON.stringify(left.results.slice(0,2).map(x => x.rec.caption)));
+      ok("leaving the rest alone", left.results.every(x => /garden/.test(x.rec.caption)));
+      eq("excluding a word that appears nowhere changes nothing",
+         (await searchPhotos({ query:"", limit:200, exclude_text:["zzzznothing"] })).total, all);
+    }
     eq("a user can search a name as ordinary text", peopleSearchArgs({ query:"Anna beach", interpret_people:false }).args.person_ids, []);
     ok("an explicit unknown name gives an actionable error", await rejected(() => searchPhotos({ query:'person:"Nobody"' })));
     const first = await searchPhotos({ query:"", limit:60 });
@@ -476,19 +491,80 @@ async function consumerSelfTest(scratch){
     ok("ambiguous names ask for an explicit person selection", await rejected(() => searchPhotos({ query:"Anna" })));
     ok("chat filters cannot silently choose between duplicate names", await rejected(() => searchPhotos({ query:"", person:["Anna"] })));
     FACES.people.pop();
-    // Exercise the actual form/rendering path with the server disabled.
+    /* RS-3: the Search tab is gone, so exercise the one field that replaced it.
+       Everything the tab could express has to still be expressible here, or
+       deleting it lost capability rather than removing a detour. */
     const wasLoaded = IDX.loaded; IDX.loaded = true;
-    renderSearchPeople();
-    $("#photoQuery").value = "Anna and Ben"; $("#photoSemantic").checked = false;
-    await submitPhotoSearch();
-    eq("the Search screen shows the required people", [...$("#photoSearchApplied").children].map(x => x.textContent), ["With Anna","With Ben"]);
-    ok("the Search screen renders matching thumbnails", $("#photoSearchResults").querySelectorAll("figure").length === 1);
-    $("#photoSearchClear").click();
-    eq("clearing filters clears old results", $("#photoSearchResults").children.length, 0);
-    $("#photoFrom").value = "2025-01-01"; $("#photoTo").value = "2024-01-01";
-    await submitPhotoSearch();
-    ok("invalid date bounds have readable feedback", /From date/.test($("#photoSearchStatus").textContent));
-    $("#photoSearchClear").click(); IDX.loaded = wasLoaded;
+    const keepChips = GAL.chips, keepTexts = GAL.texts, keepF = { ...SG.filters };
+    try {
+      GAL.chips = []; GAL.texts = ["beach"]; SG.filters = { from:"", to:"", place:"",
+        interpret:false, semantic:true };
+
+      GAL.texts = ["-screenshot"];
+      let a = sgArgs();
+      eq("a minus sign leaves a word out", JSON.stringify(a.exclude_text), '["screenshot"]');
+      ok("and it is not also searched for", !a.query);
+
+      GAL.texts = ["-Anna"];
+      a = sgArgs();
+      ok("a minus sign in front of a name leaves that PERSON out",
+         (a.exclude_person_ids || []).length === 1, JSON.stringify(a.exclude_person_ids));
+      ok("so it is not treated as a word", !(a.exclude_text || []).length);
+
+      GAL.texts = ["place:Sicily"];
+      eq("place: narrows by place", sgArgs().place, "Sicily");
+
+      GAL.texts = ["2019..2021"];
+      a = sgArgs();
+      eq("a year range starts at the first day", a.date_from, "2019-01-01");
+      eq("and ends at the last", a.date_to, "2021-12-31");
+      GAL.texts = ["2019-02..2020-02"];
+      a = sgArgs();
+      eq("a month range ends on the real last day of that month", a.date_to, "2020-02-29");
+      GAL.texts = ["2021..2019"];
+      eq("a range the wrong way round still means that range", sgArgs().date_from, "2019-01-01");
+
+      GAL.texts = ["beach", "-dog", "place:Erice"];
+      a = sgArgs();
+      eq("the words that are left are the query", a.query, "beach");
+      eq("alongside the operators", JSON.stringify([a.exclude_text, a.place]),
+         '[["dog"],"Erice"]');
+
+      /* The panel under the field: the tab's own boxes, kept. */
+      GAL.texts = ["beach"];
+      $("#sgFrom").value = "2020-03-01"; $("#sgTo").value = "2020-01-01";
+      $("#sgPlace").value = "Erice"; $("#sgInterpret").checked = true;
+      $("#sgSemantic").checked = false;
+      sgReadFilters();
+      eq("a backwards date range is swapped, not refused", SG.filters.from, "2020-01-01");
+      eq("and the boxes are corrected on screen", $("#sgFrom").value, "2020-01-01");
+      a = sgArgs();
+      eq("the panel's dates reach the search", a.date_to, "2020-03-01");
+      eq("so does its place", a.place, "Erice");
+      eq("name interpretation is off unless asked for", a.interpret_people, true);
+      eq("and meaning-based matching can be turned off", a.semantic, false);
+      eq("the field says how many filters are set", $("#sgFilterCount").textContent, "5 filters");
+
+      $("#sgFiltersClear").click();
+      eq("clearing resets them", sgFiltersActive(), 0);
+      eq("and says nothing", $("#sgFilterCount").textContent, "");
+      a = sgArgs();
+      ok("name interpretation goes back off, which the chips depend on",
+         a.interpret_people === false);
+
+      /* A search left behind with its filters still armed is how the next one
+         comes back mysteriously empty. */
+      GAL.texts = ["beach"]; $("#sgPlace").value = "Nowhere"; sgReadFilters();
+      clearSearch();
+      eq("clearing the search clears its filters too", SG.filters.place, "");
+      eq("including on screen", $("#sgPlace").value, "");
+    } finally {
+      GAL.chips = keepChips; GAL.texts = keepTexts; SG.filters = keepF;
+      $("#sgFrom").value = ""; $("#sgTo").value = ""; $("#sgPlace").value = "";
+      $("#sgInterpret").checked = false; $("#sgSemantic").checked = true;
+      sgRenderFilters();
+    }
+    IDX.loaded = wasLoaded;
     const one = FACES.faces.get("a"), originalEngine = one.engine;
     one.engine = "old-incompatible-model";
     ok("incompatible face spaces cannot be regrouped", await rejected(async () => clusterFaces()));

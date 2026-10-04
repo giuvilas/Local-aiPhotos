@@ -213,13 +213,15 @@ function showPersonPhotos(g, label){
     const f = FACES.faces.get(fid);
     if (f) ids.add(f.photo_id);
   }
+  /* A named group becomes a person chip in the one search field, so the result
+     is an ordinary search: it can be narrowed further, viewed, selected and
+     looked at by date. It used to open a separate Search page whose results
+     could do none of that. */
   if (g.name){
-    document.querySelector('nav [data-tab="search"]').click();
-    renderSearchPeople();
-    $("#photoQuery").value = ""; $("#photoPlace").value = "";
-    $("#photoFrom").value = ""; $("#photoTo").value = "";
-    for (const input of $("#photoPeople").querySelectorAll("input")) input.checked = input.value === g.id;
-    submitPhotoSearch(); return;
+    GAL.chips = [{ kind:"person", id:g.id, label:g.name }];
+    GAL.texts = [];
+    if (typeof sgRenderChips === "function") sgRenderChips();
+    runSearch(); return;
   }
   const recs = [...ids].map(id => IDX.records.get(id)).filter(r => r && !r.deleted && !r.hidden && r.status !== "error" && !r.probe)
     .sort((a, b) => (b.date_taken || "").localeCompare(a.date_taken || ""));
