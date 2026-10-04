@@ -2475,13 +2475,66 @@ async function selfTest(){
     {
       eq("#library names the Library tab", tabFromHash("#library"), "library");
       eq("#favourites names the Favourites tab", tabFromHash("#favourites"), "favourites");
-      eq("Favourites shows the Library's grid", VIEW_SECTION.favourites, "library");
+      {   /* Asserting the behaviour, not a lookup table that described it. */
+        const wasT = curTab, wasS = curScope, wasV = GAL.view;
+        showTab("favourites");
+        eq("Favourites is the grid", curTab, "library");
+        ok("showing the Library's own section", $("#tab-library").hidden === false);
+        eq("with the scope set, not a view of its own", curScope, "favourites");
+        curScope = wasS; showTab(wasT); await galSetView(wasV);
+      }
       eq("tab names are case-insensitive", tabFromHash("#Timeline"), "timeline");
       eq("extra parameters after a tab are ignored", tabFromHash("#people&x=1"), "people");
       eq("a leading slash is tolerated", tabFromHash("#/settings"), "settings");
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
       eq("the old Search address lands on the grid, where its results are shown",
          tabFromHash("#search"), "library");
+      /* Reloading onto the Timeline used to throw the restored search away:
+         the rule was "any tab but Library means leave it behind", which was
+         right while Search was a destination and wrong once it reaches every
+         arrangement of the photos. Drive the decision, not the constant it
+         reads -- asserting SCOPED_LENSES here would pass either way. */
+      {
+        const realRun = runSearch, realRefresh = refreshActiveTab;
+        const keepChips = GAL.chips, keepTab = curTab, keepPending = RESTORE.pending;
+        let ran = 0, refreshed = 0;
+        runSearch = async () => { ran++; };
+        refreshActiveTab = () => { refreshed++; };
+        const chip = () => [{ kind:"thing", value:"beach", label:"beach" }];
+        try {
+          /* Let any restore already scheduled by an earlier test land, then
+             start counting from zero: otherwise this measures that one too. */
+          RESTORE.pending = false; RESTORE.saved = null;
+          await new Promise(r => setTimeout(r, 30));
+          ran = 0; refreshed = 0;
+          GAL.chips = chip(); GAL.texts = [];
+          curTab = "timeline";
+          RESTORE.saved = { chips:GAL.chips, texts:[], removed:false, open:null };
+          restoreView();
+          await new Promise(r => setTimeout(r, 25));
+          eq("a restored search is run when the Timeline is up", ran, 1);
+          eq("and the lens on screen regroups the results", refreshed, 1);
+          eq("so the chips are not thrown away", GAL.chips.length, 1);
+
+          ran = 0; refreshed = 0;
+          GAL.chips = chip(); GAL.texts = [];
+          curTab = "settings";
+          RESTORE.saved = { chips:GAL.chips, texts:[], removed:false, open:null };
+          restoreView();
+          await new Promise(r => setTimeout(r, 25));
+          eq("but left behind where there is no grid to put results in", ran, 0);
+          eq("and cleared rather than left armed", GAL.chips.length, 0);
+        } finally {
+          runSearch = realRun; refreshActiveTab = realRefresh;
+          GAL.chips = keepChips; GAL.texts = []; curTab = keepTab;
+          RESTORE.pending = keepPending; RESTORE.saved = null;
+        }
+      }
+      /* Old addresses still resolve, but the app must stop publishing them. */
+      eq("the grid publishes itself as Explore", hashFor("library"), "explore");
+      ok("no lens publishes a pre-three-tab address",
+         LENSES.every(l => hashFor(l) === "explore" || hashFor(l).startsWith("explore/")),
+         LENSES.map(hashFor).join(","));
       eq("#selftest is not a tab", tabFromHash("#selftest"), null);
       eq("nor is #selftest with parameters", tabFromHash("#selftest&heic=file:///x.heic"), null);
       eq("an unknown name is not a tab", tabFromHash("#nonsense"), null);
@@ -2517,6 +2570,15 @@ async function selfTest(){
          $("#tab-scan").hidden === false && $("#tab-chat").hidden === true
          && document.querySelector('nav button[data-tab="scan"]').getAttribute("aria-selected") === "true");
       ok("the lens bar belongs to Explore and is hidden elsewhere", $("#lensbar").hidden === true);
+
+      /* The filters panel belongs to the lens bar. Left open it floated over
+         Scan and Settings, which have nothing to filter. */
+      showTab("library");
+      $("#sgMore").hidden = false; $("#sgMoreBtn").setAttribute("aria-expanded", "true");
+      showTab("settings");
+      ok("an open filters panel does not follow you out of Explore",
+         $("#sgMore").hidden === true);
+      eq("and the button says so", $("#sgMoreBtn").getAttribute("aria-expanded"), "false");
 
       showTab("timeline");
       ok("a lens shows the lens bar", $("#lensbar").hidden === false);

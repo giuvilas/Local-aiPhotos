@@ -66,7 +66,7 @@ reference library that was `/Volumes/Photos/.photoindex/`. Yours is wherever
 | `vectors.bin` | 20 MB | Embeddings: 768 float32 numbers per photo, for semantic search. |
 | `vectors.json` | 125 KB | Which row of `vectors.bin` belongs to which photo. |
 | `thumbs/` | 226 MB | One 384px JPEG per photo, named `<id>.jpg`. |
-| `faces/` | varies | Face geometry, vectors, aligned crops and the names you gave people. Deleted by one button in the People tab. |
+| `faces/` | varies | Face geometry, vectors, aligned crops and the names you gave people. Deleted by one button under Explore → People. |
 | `config.json` | 7 KB | Settings, the extraction schema, and the hashes that detect when records are out of date. |
 | `runs.jsonl` | 9 KB | One line per scan: when, how long, how many, every error. |
 | `state.json` | 55 B | Resume checkpoint. 55 bytes means "nothing pending"; the scan finished. |
@@ -328,14 +328,39 @@ is asleep or read-only, you get an error message and nothing changes on screen.
 
 ### Faces
 
-**People tab → Find faces.** With **Read from** set to *Thumbnails*, it covers the **whole
-index** whichever folder is connected, because thumbnails are keyed by photo, not by folder.
-*Originals* is more accurate but can only reach the folder you have open, and on this NAS means
-re-reading 14.3 GB rather than 214 MB.
+Scanning faces lives under **Scan → Faces**; naming, merging and splitting the groups live
+under **Explore → People**. One is a job you start and wait for, the other is browsing.
 
-It is resumable: photos already looked at are skipped, so stopping and pressing it again
-carries on. Progress, speed, time remaining and Pause/Stop are shown on the People tab while
-it runs.
+**Read from** decides the whole character of the run, and the default is **Originals**:
+
+| | Originals (default) | Thumbnails |
+|---|---|---|
+| decoded at | 2,048 px (`faces.refinePx`) | 384 px |
+| reach | only the folder you have open | the **whole index**, whichever folder is connected, because thumbnails are keyed by photo rather than by folder |
+| cost on this NAS | 14.3 GB, or 8.9 GB with *Only photos with people* | 214 MB |
+| time | ~3 hours | ~8 minutes |
+| measured quality | faces well clear of the model's 112 px input | **42% of faces found fell below it**, and the groups returned were mostly one photo each |
+
+Thumbnails were the default until v0.6.26. They are not the cheaper option when the answer has
+to be thrown away: see
+[FINDINGS §21](FINDINGS.md#21-a-setting-can-be-wired-correctly-and-still-be-undone-downstream).
+
+**Only photos with people** uses the captions the vision pass already paid for — 4,203 of
+7,039 photos on this library, 8.9 GB instead of 14.7. It skips a photo only on *positive
+evidence of nobody*; a missing or silent `people` field is never treated as evidence.
+
+**Grouping strictness** is not part of the run. It re-groups instantly from vectors already on
+disk, so it belongs with the faces it rearranges, under Explore → People, and costs nothing to
+try again.
+
+A run is resumable: photos already looked at are skipped, so stopping and pressing it again
+carries on. Face rows reach disk every 100 photos **or every 45 seconds**, whichever comes
+first, so a crash costs under a minute and a long quiet start no longer looks like a hang.
+Progress, speed, time remaining and Pause/Stop are shown where the run was started.
+
+Each stored face records `src` — `"thumb"` or `"original"` — reporting what was **actually
+read**, including when a missing thumbnail forced a fall back to the original. It is never
+inferred from the setting.
 
 Names you assign are searchable immediately, in the search box and in chat, where
 `list_people` tells the model which names exist.

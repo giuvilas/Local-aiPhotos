@@ -860,7 +860,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.26";
+const APP_VERSION = "0.6.27";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -1066,9 +1066,6 @@ async function idbGet(k){ const db = await idb(); return new Promise((res, rej) 
 const TOPS = ["explore","scan","settings"];
 const VIEWS = ["library","timeline","people","chat","scan","settings"];
 const LENSES = ["library","timeline","people","chat"];
-/* Favourites is not a view. It is a scope over the grid, and always was: the
-   tab rendered the Library's section with a filter applied. */
-const VIEW_SECTION = { favourites:"library" };
 const SCOPES = ["all","favourites","removed"];
 /* The lenses that arrange photos, and so can be scoped. */
 const SCOPED_LENSES = ["library","timeline"];
@@ -1134,6 +1131,12 @@ function showTab(name, opts){
   const lb = $("#lensbar");
   if (lb){
     lb.hidden = curTop !== "explore";
+    /* The filters panel is part of the lens bar, not of the page: left open, it
+       floated above Scan and Settings, which have nothing to filter. */
+    if (lb.hidden && $("#sgMore")){
+      $("#sgMore").hidden = true;
+      $("#sgMoreBtn").setAttribute("aria-expanded", "false");
+    }
     document.querySelectorAll("#lenses button").forEach(x =>
       x.setAttribute("aria-selected", String(x.dataset.lens === name)));
     /* Scope reads on the arrangements of photos. People, Search and Chat
@@ -1141,7 +1144,10 @@ function showTab(name, opts){
     $("#lensScopeWrap").hidden = !SCOPED_LENSES.includes(name);
     $("#lensScope").value = curScope;
   }
-  const sec = VIEW_SECTION[name] || name;
+  /* Favourites is not a view and never was: the tab rendered the Library's own
+     section with a filter applied, so it is turned into a scope above and the
+     section is simply the view's own. */
+  const sec = name;
   VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
   restoreLensScroll(name);
@@ -6767,7 +6773,7 @@ const TOOLS = [
       image_type:{ type:"string", enum:TPL.enums.image_type },
       occasion:{ type:"string", description:"e.g. easter, christmas, halloween." },
       person:{ type:"array", items:{type:"string"},
-        description:"Names of people who must ALL appear, as named in the People tab. "
+        description:"Names of people who must ALL appear, as the user named them under Explore \u2192 People. "
           + "Call list_people first to see which names exist." },
       limit:{ type:"integer", description:"Max results, default 12." } },
       required:["query"] } } },
@@ -6781,7 +6787,7 @@ const TOOLS = [
       text:{type:"string"}, has_text:{type:"boolean"},
       limit:{type:"integer"} }, required:[] } } },
   { type:"function", function:{ name:"list_people",
-    description:"The names assigned to face groups in the People tab, with how many photos "
+    description:"The names assigned to face groups under Explore \u2192 People, with how many photos "
       + "each appears in. Use this whenever the user names a person, to check the spelling "
       + "before filtering. Returns nothing if no one has been named yet.",
     parameters:{ type:"object", properties:{}, required:[] } } },
@@ -6844,7 +6850,7 @@ async function runTool(name, args){
       out.sort((a,b) => b.photos - a.photos);
       return out.length ? { count:out.length, people:out }
         : { count:0, people:[],
-            note:"No one has been named yet. Faces are grouped in the People tab and "
+            note:"No one has been named yet. Faces are grouped under Explore \u2192 People and "
                + "the user assigns the names." };
     }
     case "find_similar": {
@@ -10624,8 +10630,10 @@ async function runSearch(quiet){
   const tok = ++SG.run;
   if (!GAL.chips.length && !GAL.texts.length){ clearSearch(); return; }
   if (!quiet){                       // quiet: restoring after a refresh must not change the tab
-    if (tabFromHash() !== "library") location.hash = "library";
-    showTab("library");
+    /* goTo publishes the address the app actually uses now. Writing "library"
+       here left the bar reading #library, an address kept only for links made
+       before the three tabs existed. */
+    goTo("library");
   }
   await onLibraryShown();
   if (!IDX.records.size){ toast("Connect a folder in Settings first."); return; }
@@ -10818,10 +10826,17 @@ function restoreView(){
   setTimeout(async () => {
     try {
       const searching = GAL.chips.length || GAL.texts.length;
-      if (searching && curTab !== "library"){            // another tab is up; leave the search behind
+      /* A search reaches every arrangement of the photos now, so reloading onto
+         the Timeline keeps it. It is only left behind where there is no grid of
+         results to come back to. */
+      const arranging = SCOPED_LENSES.includes(curTab);
+      if (searching && !arranging){
         GAL.chips = []; GAL.texts = []; sgRenderChips();
-      } else if (searching) await runSearch(true);
-      else if (s.removed && curTab === "library") await galSetView("removed");
+      } else if (searching){
+        await runSearch(true);
+        refreshActiveTab();            // the lens on screen regroups the results
+      }
+      else if (s.removed && arranging) await setScope("removed");
       if (s.open && curTab !== "chat"){
         const i = GAL.list.findIndex(x => x.r.id === s.open);
         if (i >= 0 && !VW.open && !$("#tab-library").hidden) openViewer(i);
@@ -13325,13 +13340,66 @@ async function selfTest(){
     {
       eq("#library names the Library tab", tabFromHash("#library"), "library");
       eq("#favourites names the Favourites tab", tabFromHash("#favourites"), "favourites");
-      eq("Favourites shows the Library's grid", VIEW_SECTION.favourites, "library");
+      {   /* Asserting the behaviour, not a lookup table that described it. */
+        const wasT = curTab, wasS = curScope, wasV = GAL.view;
+        showTab("favourites");
+        eq("Favourites is the grid", curTab, "library");
+        ok("showing the Library's own section", $("#tab-library").hidden === false);
+        eq("with the scope set, not a view of its own", curScope, "favourites");
+        curScope = wasS; showTab(wasT); await galSetView(wasV);
+      }
       eq("tab names are case-insensitive", tabFromHash("#Timeline"), "timeline");
       eq("extra parameters after a tab are ignored", tabFromHash("#people&x=1"), "people");
       eq("a leading slash is tolerated", tabFromHash("#/settings"), "settings");
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
       eq("the old Search address lands on the grid, where its results are shown",
          tabFromHash("#search"), "library");
+      /* Reloading onto the Timeline used to throw the restored search away:
+         the rule was "any tab but Library means leave it behind", which was
+         right while Search was a destination and wrong once it reaches every
+         arrangement of the photos. Drive the decision, not the constant it
+         reads -- asserting SCOPED_LENSES here would pass either way. */
+      {
+        const realRun = runSearch, realRefresh = refreshActiveTab;
+        const keepChips = GAL.chips, keepTab = curTab, keepPending = RESTORE.pending;
+        let ran = 0, refreshed = 0;
+        runSearch = async () => { ran++; };
+        refreshActiveTab = () => { refreshed++; };
+        const chip = () => [{ kind:"thing", value:"beach", label:"beach" }];
+        try {
+          /* Let any restore already scheduled by an earlier test land, then
+             start counting from zero: otherwise this measures that one too. */
+          RESTORE.pending = false; RESTORE.saved = null;
+          await new Promise(r => setTimeout(r, 30));
+          ran = 0; refreshed = 0;
+          GAL.chips = chip(); GAL.texts = [];
+          curTab = "timeline";
+          RESTORE.saved = { chips:GAL.chips, texts:[], removed:false, open:null };
+          restoreView();
+          await new Promise(r => setTimeout(r, 25));
+          eq("a restored search is run when the Timeline is up", ran, 1);
+          eq("and the lens on screen regroups the results", refreshed, 1);
+          eq("so the chips are not thrown away", GAL.chips.length, 1);
+
+          ran = 0; refreshed = 0;
+          GAL.chips = chip(); GAL.texts = [];
+          curTab = "settings";
+          RESTORE.saved = { chips:GAL.chips, texts:[], removed:false, open:null };
+          restoreView();
+          await new Promise(r => setTimeout(r, 25));
+          eq("but left behind where there is no grid to put results in", ran, 0);
+          eq("and cleared rather than left armed", GAL.chips.length, 0);
+        } finally {
+          runSearch = realRun; refreshActiveTab = realRefresh;
+          GAL.chips = keepChips; GAL.texts = []; curTab = keepTab;
+          RESTORE.pending = keepPending; RESTORE.saved = null;
+        }
+      }
+      /* Old addresses still resolve, but the app must stop publishing them. */
+      eq("the grid publishes itself as Explore", hashFor("library"), "explore");
+      ok("no lens publishes a pre-three-tab address",
+         LENSES.every(l => hashFor(l) === "explore" || hashFor(l).startsWith("explore/")),
+         LENSES.map(hashFor).join(","));
       eq("#selftest is not a tab", tabFromHash("#selftest"), null);
       eq("nor is #selftest with parameters", tabFromHash("#selftest&heic=file:///x.heic"), null);
       eq("an unknown name is not a tab", tabFromHash("#nonsense"), null);
@@ -13367,6 +13435,15 @@ async function selfTest(){
          $("#tab-scan").hidden === false && $("#tab-chat").hidden === true
          && document.querySelector('nav button[data-tab="scan"]').getAttribute("aria-selected") === "true");
       ok("the lens bar belongs to Explore and is hidden elsewhere", $("#lensbar").hidden === true);
+
+      /* The filters panel belongs to the lens bar. Left open it floated over
+         Scan and Settings, which have nothing to filter. */
+      showTab("library");
+      $("#sgMore").hidden = false; $("#sgMoreBtn").setAttribute("aria-expanded", "true");
+      showTab("settings");
+      ok("an open filters panel does not follow you out of Explore",
+         $("#sgMore").hidden === true);
+      eq("and the button says so", $("#sgMoreBtn").getAttribute("aria-expanded"), "false");
 
       showTab("timeline");
       ok("a lens shows the lens bar", $("#lensbar").hidden === false);

@@ -350,8 +350,10 @@ async function runSearch(quiet){
   const tok = ++SG.run;
   if (!GAL.chips.length && !GAL.texts.length){ clearSearch(); return; }
   if (!quiet){                       // quiet: restoring after a refresh must not change the tab
-    if (tabFromHash() !== "library") location.hash = "library";
-    showTab("library");
+    /* goTo publishes the address the app actually uses now. Writing "library"
+       here left the bar reading #library, an address kept only for links made
+       before the three tabs existed. */
+    goTo("library");
   }
   await onLibraryShown();
   if (!IDX.records.size){ toast("Connect a folder in Settings first."); return; }

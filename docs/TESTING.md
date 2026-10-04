@@ -326,7 +326,7 @@ removing the fix and confirming the suite goes red:
 | face vector memory is published before the write commits | *memory is unchanged by a failed write* |
 | a saved threshold is carried straight across a meaning change | *an old threshold is not applied to ArcFace* |
 | the face plan walks with no progress callback | *the walk is given a progress callback* |
-| the People tab stops mirroring run progress | *the People tab shows how far along it is* |
+| the People lens stops mirroring run progress | *the People lens shows how far along it is* |
 
 Do this for any new assertion that guards a defect which has actually shipped.
 

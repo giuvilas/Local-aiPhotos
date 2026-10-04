@@ -20,7 +20,7 @@ const TOOLS = [
       image_type:{ type:"string", enum:TPL.enums.image_type },
       occasion:{ type:"string", description:"e.g. easter, christmas, halloween." },
       person:{ type:"array", items:{type:"string"},
-        description:"Names of people who must ALL appear, as named in the People tab. "
+        description:"Names of people who must ALL appear, as the user named them under Explore \u2192 People. "
           + "Call list_people first to see which names exist." },
       limit:{ type:"integer", description:"Max results, default 12." } },
       required:["query"] } } },
@@ -34,7 +34,7 @@ const TOOLS = [
       text:{type:"string"}, has_text:{type:"boolean"},
       limit:{type:"integer"} }, required:[] } } },
   { type:"function", function:{ name:"list_people",
-    description:"The names assigned to face groups in the People tab, with how many photos "
+    description:"The names assigned to face groups under Explore \u2192 People, with how many photos "
       + "each appears in. Use this whenever the user names a person, to check the spelling "
       + "before filtering. Returns nothing if no one has been named yet.",
     parameters:{ type:"object", properties:{}, required:[] } } },
@@ -97,7 +97,7 @@ async function runTool(name, args){
       out.sort((a,b) => b.photos - a.photos);
       return out.length ? { count:out.length, people:out }
         : { count:0, people:[],
-            note:"No one has been named yet. Faces are grouped in the People tab and "
+            note:"No one has been named yet. Faces are grouped under Explore \u2192 People and "
                + "the user assigns the names." };
     }
     case "find_similar": {

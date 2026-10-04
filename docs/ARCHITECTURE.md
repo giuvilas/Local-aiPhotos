@@ -15,6 +15,10 @@ anything non-trivial. For *measurements* behind these decisions, see
   - [Downloads](#downloads)
   - [What can be rebuilt, and what cannot](#what-can-be-rebuilt-and-what-cannot)
 - [Navigation](#navigation)
+  - [Addresses](#addresses)
+  - [How a switch happens](#how-a-switch-happens)
+  - [What survives a lens switch](#what-survives-a-lens-switch)
+  - [Deep links and reconnecting](#deep-links-and-reconnecting)
 - [Source layout](#source-layout)
 - [The index](#the-index)
 - [Identifying a photo](#identifying-a-photo)
@@ -152,23 +156,76 @@ scan and why [OPERATIONS.md](OPERATIONS.md#backing-up-by-hand) has a command tha
 
 ## Navigation
 
-The six tabs are addressed by the URL hash: `#library`, `#chat`, `#timeline`, `#people`, `#scan`
-and `#settings`. `tabFromHash()` turns a hash into a tab name (case-insensitive, tolerating a
-leading `/`, percent-encoding and trailing `&parameters`), and returns nothing for any other
-hash. That matters because the self-test is started with `#selftest`, which must never be
-mistaken for a tab.
+**Three tabs — Explore, Scan, Settings — split by what you are doing**: looking at photos,
+building the index, configuring the machine. Everything that is a way of *looking* at the
+photos is a **lens** inside Explore, because Library, Favourites, Timeline, People and search
+results were five destinations for one thing: the same photos, filtered or grouped differently,
+and each a dead end from the others.
 
-- **Choosing a tab** sets the hash (adding a history entry, so Back and Forward work) and calls
-  `showTab()`.
-- **Opening or changing an address** calls `showTab()` for a valid tab name, at boot and on
-  `hashchange`.
-- **`showTab()`** selects the button, hides the other tabs and runs the tab's "shown" hook
-  (the Library, Timeline and People build themselves on first view). It does not touch the
-  hash, so it can be called from either direction without looping.
-- **Deep links and reconnecting.** Chrome drops folder access on reload, so a page opened on
-  `#library` usually appears before its folder is connected. When a folder or index location is
-  connected afterwards, `refreshActiveTab()` re-runs the open tab's hook, so it fills in
-  without the user having to switch away and back.
+| layer | values | meaning |
+|---|---|---|
+| top-level tab | `explore` `scan` `settings` | what you are doing |
+| lens (Explore only) | `library` (shown as **Grid**) `timeline` `people` `chat` | how the photos are arranged |
+| scope (Explore only) | `all` `favourites` `removed` | which photos |
+
+The lens ids keep their original names because each still owns the `<section>` of that name;
+"Grid" is only what the lens is called on screen.
+
+### Addresses
+
+A route is `tab/section`: `#explore`, `#explore/timeline`, `#explore/people`, `#scan`,
+`#settings`. `routeFromHash()` turns a hash into `{ view, scope? }`, case-insensitively,
+tolerating a leading `/`, percent-encoding and trailing `&parameters`, and returns nothing for
+any other hash — which matters because the self-test is started with `#selftest` and that must
+never be mistaken for a route.
+
+**Every address the app published before still resolves**, because links to them exist in the
+documentation and in saved chat history:
+
+| old address | now |
+|---|---|
+| `#library` | the Grid lens |
+| `#favourites` | the Grid lens with scope `favourites` — it carries its scope |
+| `#search` | the Grid lens, where the search field's results are shown |
+| `#timeline` `#people` `#chat` | the lens of that name |
+| `#scan` `#settings` | unchanged |
+
+`tabFromHash()` remains as the "which view does this address name" helper the suite and older
+callers use, with `#favourites` still naming itself.
+
+### How a switch happens
+
+- **`goTo(view)`** publishes the address (adding a history entry, so Back and Forward work) and
+  calls `showTab()`. It publishes the *current* form — `explore/timeline`, not `timeline`.
+- **`showTab(view, opts)`** selects the tab button and the lens button, shows or hides the lens
+  bar, hides the other sections, applies any scope the route carried, and runs the view's
+  "shown" hook. It does not touch the hash, so it can be called from either direction without
+  looping.
+- **Returning to Explore lands on the lens you left it on**, not a reset.
+- **Opening or changing an address** calls `showTab()` at boot and on `hashchange`.
+
+### What survives a lens switch
+
+This is the bet the whole structure rests on. A lens is a way of *looking*, so moving between
+lenses must not quietly discard what you were looking at.
+
+- **Scope** survives. Showing the Grid used to reset Favourites back to All every time it was
+  shown, so scope was a consequence of which tab you arrived from. It is a control now.
+- **Search** survives, and the results regroup: search in the Grid, switch to Timeline, and the
+  same photos are there by day. Both lenses draw from one `exploreRecords()` — see
+  [Browsing](#browsing-library-and-timeline).
+- **Selection** survives. Only a change of *scope* clears it, because then the selected photos
+  may no longer be in front of you.
+- **Scroll position** is remembered per lens, so coming back lands where you were.
+- **A reload** keeps a search on any arrangement of the photos, not only the Grid — see
+  [Surviving a refresh](#surviving-a-refresh).
+
+### Deep links and reconnecting
+
+Chrome drops folder access on reload, so a page opened on `#explore` usually appears before its
+folder is connected. When a folder or index location is connected afterwards,
+`refreshActiveTab()` re-runs the open view's hook, so it fills in without the user having to
+switch away and back.
 
 [↑ Back to Index](#index)
 
@@ -192,9 +249,9 @@ earlier, never the reverse.
 | `70-runner.js` | the scan runner |
 | `80-ui.js` | Settings and Scan tabs |
 | `85-chat.js` · `87-chatui.js` | the tool-calling agent; chat rendering and the lightbox |
-| `82-timeline.js` · `83-library.js` | the Timeline tab; the Library tab and its viewer |
-| `88-search.js` | the header search field: suggestions, chips, and results shown in the Library |
-| `84-faces.js` · `86-peopleui.js` | face detection, grouping, naming; the People tab |
+| `82-timeline.js` · `83-library.js` | the Timeline lens; the Grid lens and its viewer |
+| `88-search.js` | the search field: suggestions, chips, typed operators, the Filters panel, results in the grid |
+| `84-faces.js` · `86-peopleui.js` | face detection, grouping, naming; the People lens |
 | `90-selftest.js` · `95-faultfs.js` | the in-browser test suite; the fault-injecting filesystem |
 | `99-boot.js` | error surfacing and start-up |
 
@@ -321,18 +378,14 @@ There is no vector database. At 20,000 photos a brute-force pass takes a few mil
 an approximate-nearest-neighbour index would add a dependency and a build step to save time
 nobody is spending.
 
-1. **Filter** by dates, place, `image_type`, occasion, entities, person and text.
+1. **Filter** — dates (`date_from`, `date_to`, `month`), place, `image_type`, occasion,
+   entities, `photo_sets`, text, and **both directions of people**: `person`/`person_ids` must
+   all appear, `exclude_person_ids` must not. `exclude_text` leaves out photos carrying a word.
 2. **BM25** over the inverted index (k1 = 1.4, b = 0.75), built at load.
 3. **Cosine** over `vectors.bin`, with a **relevance floor**. Cosine similarity is never
    zero, so without a floor a nonsense query would return a confident list of junk.
 4. **Reciprocal rank fusion**, `Σ 1/(60 + rank)`. Because it uses ranks, the two
    incompatible score scales need no normalisation.
-1. **filter** — required/excluded people, dates, place, `image_type`, occasion, entities, text
-2. **BM25** over the inverted index (k1 = 1.4, b = 0.75), built at load
-3. **cosine** over `vectors.bin`, with a **relevance floor** — cosine is never zero, so
-   without one a nonsense query returns a confident list of junk
-4. **reciprocal rank fusion**, `Σ 1/(60 + rank)` — rank-based, so the two incompatible
-   score scales need no normalisation
 
 Exact phrases in `"quotes"` are a filter, not a ranking signal. They are stripped before
 ranking so the rest of the query still scores.
@@ -374,9 +427,23 @@ The header search field is different: people are chosen as chips there, so it pa
 
 ## Browsing: Library and Timeline
 
-Both are views over the records already in memory. Neither reads a photo or calls a model;
-the only I/O is reading thumbnails, and both are built so that **thumbnails are fetched only
-for what is on screen**. Reading 6,635 of them from a network share up front is not an option.
+**One list, several arrangements.** Grid, Timeline and the search results are the same photos
+laid out differently, so there is exactly one place that decides *which* photos:
+
+```js
+exploreRecords()   // scope + search decide WHICH photos
+exploreStamp()     // a signature of that, so a lens knows when the answer changed
+```
+
+The Library and the Timeline each used to walk `IDX.records` with their own copy of the same
+filter. That is the whole reason the Timeline behaved like a destination rather than a way of
+looking: a scope or a search never reached it, because it was answering from a different list.
+`galBuild()` and `buildTimeline()` now both consume `exploreRecords()`, and in search view the
+ranker's order is preserved rather than re-sorted.
+
+`exploreStamp()` exists because the Timeline caches its grouping, and a cache keyed on the
+number of records cannot see any of this: the count never moves while every day in the timeline
+changes.
 
 ### Library
 
@@ -429,13 +496,39 @@ view instead of building a second grid.
 - **The words are a separate, ordinary search.** Enter on the first row sets the text and runs
   the usual hybrid search (BM25 plus embeddings, merged by rank fusion) inside the chip filters.
   This is the only part that can call the embedding model.
-- **Results live in the Library.** Search switches the Library to a third view, `search`, whose
-  list is the ranker's order (newest first when there are only chips). The viewer, Select,
-  rotate and remove therefore work on results, and arrow keys step through them. The chat cap
-  of 60 results does not apply here: `searchPhotos` takes a `max` for the Library.
-- **Waiting for the index.** A search started from another tab opens the Library, waits for the
-  one shared load of the index (`onLibraryShown()` returns the same promise to every caller),
-  then loads face names, vectors and the keyword index if they are missing, as chat does.
+- **Results live in the Grid, and in every other lens.** Search switches the view to `search`,
+  whose list is the ranker's order (newest first when there are only chips). The viewer,
+  Select, rotate and remove therefore work on results, and arrow keys step through them. The
+  Timeline draws from the same list, so switching lens regroups the *same results* by day. The
+  chat cap of 60 results does not apply here: `searchPhotos` takes a `max` for the grid.
+- **There is only one search.** There used to be two: this field, and a Search tab with its own
+  boxes. A field and a destination contradict each other, so the tab was deleted in v0.6.26 and
+  everything it could express moved here.
+- **Filters panel.** The button beside the scope control opens what the tab's boxes were: From
+  and To dates, Place, *Recognise names in my search* and *Include meaning-based matches*. A
+  count sits beside the button so armed filters are never invisible, and a date range entered
+  backwards is swapped rather than refused — it is a slip, not a question. Clearing the search
+  clears the panel, because a date range left armed behind an empty field is how the next
+  search comes back mysteriously empty.
+- **Typed operators**, for anyone who would rather type than click:
+
+  | typed | means |
+  |---|---|
+  | `-screenshot` | leave photos carrying that word out (`exclude_text`) |
+  | `-Anna` | leave that person out (`exclude_person_ids`), when the word names exactly one named group |
+  | `place:Sicily` | narrow by place, as free text rather than a known-place chip |
+  | `2019..2021` | a date range; `2019-06..2019-08` and full dates also work, and a month range ends on that month's real last day |
+
+  A chip still beats an operator, because chips are exact and text is a guess. Leaving a
+  **word** out did not exist anywhere before: the engine could exclude a person, and even that
+  was reachable only by the chat agent, never by someone using the app.
+- **Name interpretation is off in this field.** `searchPhotos` interprets names by default,
+  which was right for the old tab where a name was typed on purpose. Here a person is chosen as
+  a chip, so leaving interpretation on made any typed word matching a name a hidden hard filter,
+  and two people sharing a name threw the whole search away. The panel can turn it back on.
+- **Waiting for the index.** A search started from elsewhere opens the Grid, waits for the one
+  shared load of the index (`onLibraryShown()` returns the same promise to every caller), then
+  loads face names, vectors and the keyword index if they are missing, as chat does.
 
 ### Favourites
 
@@ -443,14 +536,16 @@ A heart is a mark the user made, kept on the photo's record as `favourite: true`
 rotation is: appended through the Library's single write queue, carried across a rescan, never
 set by the model, and never touching the file.
 
-- **The tab is a view, not a second grid.** Favourites is a nav entry whose section is the
-  Library (`TAB_SECTION`), with the grid switched to `view: "favourites"`, which `galBuild()`
-  fills with the hearted, visible photos in the usual order. `#favourites` links to it, and
-  choosing Library switches the grid back to the whole library.
+- **Favourites is a scope, not a tab.** It always rendered the Library's own section with a
+  filter applied — a filter wearing a tab's clothes — so since v0.6.24 it is one of three
+  values of the scope control in the lens bar (All photos, Favourites, Removed). `GAL.view` is
+  switched to `favourites`, which `exploreRecords()` fills with the hearted, visible photos in
+  the usual order, and the Timeline honours it too. `#favourites` still resolves, carrying its
+  scope with it.
 - **Where to heart.** A heart on every tile (revealed on hover, always shown once set), a heart
   in the viewer (`F`), and the **Favourite** button for a Select-mode selection, which hearts
   all of them or, if they all are already, removes the hearts. An Undo follows.
-- **Leaving the view.** Unhearting in the Favourites view removes the photo from the list; the
+- **Leaving the scope.** Unhearting while scoped to Favourites removes the photo from the list; the
   viewer then carries on with its neighbour, as Remove does.
 - **Search.** "Favourites" is a suggestion and a chip; as a chip it is the set of hearted
   photos, so it combines with the rest (*Favourites* + *Anna* + *2022*).
@@ -492,7 +587,7 @@ that nothing outside `.photoindex/` is modified still holds.
   have dropped it. Memory is updated only after the write succeeds.
 - It uses `hidden`, **not** `deleted`. The scan plan treats a deleted record as absent and
   would index the same file again on the next scan.
-- Search, chat, the Timeline, statistics and the People tab all skip hidden records. The
+- Search, chat, the Timeline, statistics and the People lens all skip hidden records. The
   scanner keeps them matched but leaves them alone, and a rescan carries `hidden` forward.
 - **Undo** appears for about nine seconds after any removal or restore. The **Removed** view
   lists hidden photos and restores them (which appends `hidden: false`).
@@ -554,7 +649,7 @@ photo vectors) and `people.json` (groups and the names you gave them).
 - **Thumbnails need no photo folder.** They are keyed by record id, so a pass over thumbnails
   covers the whole index whichever folder is connected. Only the "originals" source needs a
   walk, and can therefore only reach the folder that is open.
-- **Names work everywhere**, not only in the People tab: `ensureFaceNames()` reads the two
+- **Names work everywhere**, not only in the People lens: `ensureFaceNames()` reads the two
   small files (not the multi-megabyte vectors), so chat and the search box can filter by name
   without loading the grouping machinery.
 - **One action deletes all of it**, leaving the rest of the index untouched.
@@ -602,6 +697,9 @@ What the app guarantees, and how.
 - Five identical failures in a row stop a scan, rather than writing thousands of error
   records.
 - Restoring a backup first copies the current state, so a mistaken restore is undoable.
+- A restore validates the face snapshot before writing anything, keeps a safety copy, and does
+  not prune the backup it is restoring from. A legacy backup with no face manifest leaves the
+  live faces alone rather than replacing them with nothing.
 
 **Consistency of what is on disk**
 
@@ -613,43 +711,24 @@ What the app guarantees, and how.
   with no `records.jsonl` clears memory instead of leaving the previous location's records
   behind, where they would be planned against and then flushed into the new index.
 - A stalled write cannot wedge the index: the serialising lock has a timeout, so one
-  unresponsive NAS operation does not block every write that follows.
+  unresponsive NAS operation does not block every write that follows. **A timeout does not
+  cancel the underlying write**, so a late completion can still land; generation fencing is
+  still required and is a roadmap item.
+- People edits are serialised, verified by reading back what was written, and rolled back in
+  memory if the save fails. A scan, backup or restore blocks concurrent people edits in this
+  tab.
+- **Restoring several files is not atomic.** Generation-level transactions remain a roadmap
+  item, so a restore interrupted part-way can leave a mixed set.
 
 **What can be rebuilt**
 
 - Thumbnails are the only derived part of the index and the only part excluded from backups.
   **Rebuild thumbnails** remakes them from the originals with no model calls, matching photos
   by content rather than by stored path.
+- Backups include the essential face files with SHA-256 checksums and vector-length validation.
+  Thumbnails and face crops are excluded and need the originals to regenerate.
 - A failure keeps its `cause`, so callers can tell a deleted folder from an unreachable share.
   The two need opposite responses, and a `DOMException` loses its name when re-wrapped.
-
-
-- writes are confined to `.photoindex/`; nothing else is modified, moved or deleted
-- **Mark missing** refuses to run when a folder returns no images at all — an unmounted NAS
-  cannot soft-delete a library
-- five identical failures in a row stop a scan rather than writing thousands of error records
-- index writes are serialised: `appendLines` reads a size then seeks to it, so concurrent
-  appends would otherwise overwrite each other
-- restoring a backup first copies the current state, so a mistaken restore is undoable
-- new backups include essential face files with SHA-256 checksums and vector-length
-  validation; thumbnails and face crops are excluded and require originals to regenerate
-- restore validates the face snapshot before writing, retains a safety copy, and does not
-  prune its selected source; legacy backups without face manifests preserve live faces
-- people edits are serialized, checked by read-back, and rolled back in memory if saving
-  fails; scans/backups/restores block concurrent people edits within this tab
-- restoring several files is not atomic; generation-level transactions remain a roadmap item
-- an index that cannot be read is an **empty** index, never a stale one: loading a location
-  with no `records.jsonl` clears memory rather than leaving the previous location's records
-  behind, where they would be planned against and then flushed into the new index
-- `vectors.bin` is reconciled to its id list in both directions on load, and a write that
-  does not land at the expected length is refused before the ids describing it are recorded
-- a stalled write cannot wedge the index: the serialising lock has a timeout, so one
-  unresponsive NAS operation does not block every write that follows. A timeout does not
-  cancel the underlying write; generation fencing is still required for late completions
-- the model can fill in fields but never *identify* a record: `id`, `path`, `fingerprint`,
-  `size`, `mtime` and `scanned_at` are reserved and stripped from model output
-- a failure keeps its `cause`, so callers can tell a deleted folder from an unreachable
-  share — the two need opposite responses, and a `DOMException` loses its name when wrapped
 
 [↑ Back to Index](#index)
 

@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.26";
+const APP_VERSION = "0.6.27";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -206,9 +206,6 @@ async function idbGet(k){ const db = await idb(); return new Promise((res, rej) 
 const TOPS = ["explore","scan","settings"];
 const VIEWS = ["library","timeline","people","chat","scan","settings"];
 const LENSES = ["library","timeline","people","chat"];
-/* Favourites is not a view. It is a scope over the grid, and always was: the
-   tab rendered the Library's section with a filter applied. */
-const VIEW_SECTION = { favourites:"library" };
 const SCOPES = ["all","favourites","removed"];
 /* The lenses that arrange photos, and so can be scoped. */
 const SCOPED_LENSES = ["library","timeline"];
@@ -274,6 +271,12 @@ function showTab(name, opts){
   const lb = $("#lensbar");
   if (lb){
     lb.hidden = curTop !== "explore";
+    /* The filters panel is part of the lens bar, not of the page: left open, it
+       floated above Scan and Settings, which have nothing to filter. */
+    if (lb.hidden && $("#sgMore")){
+      $("#sgMore").hidden = true;
+      $("#sgMoreBtn").setAttribute("aria-expanded", "false");
+    }
     document.querySelectorAll("#lenses button").forEach(x =>
       x.setAttribute("aria-selected", String(x.dataset.lens === name)));
     /* Scope reads on the arrangements of photos. People, Search and Chat
@@ -281,7 +284,10 @@ function showTab(name, opts){
     $("#lensScopeWrap").hidden = !SCOPED_LENSES.includes(name);
     $("#lensScope").value = curScope;
   }
-  const sec = VIEW_SECTION[name] || name;
+  /* Favourites is not a view and never was: the tab rendered the Library's own
+     section with a filter applied, so it is turned into a scope above and the
+     section is simply the view's own. */
+  const sec = name;
   VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
   restoreLensScroll(name);

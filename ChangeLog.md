@@ -15,23 +15,27 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
+- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Fixed](#fixed)
+  - [Removed](#removed)
+  - [Documentation](#documentation)
 - [0.6.26 (2026-10-04)](#0626-2026-10-04)
   - [Changed](#changed)
   - [Added](#added)
-  - [Removed](#removed)
+  - [Removed](#removed-1)
 - [0.6.25 (2026-10-04)](#0625-2026-10-04)
   - [Changed](#changed-1)
-  - [Fixed](#fixed)
+  - [Fixed](#fixed-1)
 - [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-2)
-  - [Fixed](#fixed-1)
-- [0.6.23 (2026-10-04)](#0623-2026-10-04)
   - [Fixed](#fixed-2)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+  - [Fixed](#fixed-3)
   - [Added](#added-1)
 - [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-2)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
-  - [Fixed](#fixed-3)
+  - [Fixed](#fixed-4)
   - [Changed](#changed-3)
 - [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-4)
@@ -40,11 +44,11 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
   - [Added](#added-3)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
-  - [Fixed](#fixed-4)
+  - [Fixed](#fixed-5)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-4)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
-  - [Fixed](#fixed-5)
+  - [Fixed](#fixed-6)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
   - [Changed](#changed-6)
 - [0.6.13 (2026-10-02)](#0613-2026-10-02)
@@ -60,9 +64,9 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
   - [Added](#added-7)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
-  - [Fixed](#fixed-6)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-7)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-8)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-8)
 - [0.6.4 (2026-10-02)](#064-2026-10-02)
@@ -82,7 +86,7 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-14)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-8)
+  - [Fixed](#fixed-9)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
   - [Added](#added-14)
   - [Changed](#changed-15)
@@ -91,22 +95,70 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-15)
   - [Changed](#changed-17)
-  - [Fixed](#fixed-9)
+  - [Fixed](#fixed-10)
 - [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-16)
   - [Changed](#changed-18)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-17)
   - [Changed](#changed-19)
-  - [Fixed](#fixed-10)
+  - [Fixed](#fixed-11)
 - [0.2.0 (2026-09-29)](#020-2026-09-29)
   - [Added](#added-18)
   - [Changed](#changed-20)
-  - [Fixed](#fixed-11)
+  - [Fixed](#fixed-12)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
   - [Added](#added-19)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.27 (2026-10-04)
+
+**Summary:** a review of RS-1 to RS-3, and the documentation brought up to date with the
+three-tab structure.
+
+### Fixed
+
+- **An open Filters panel followed you out of Explore**, floating above Scan and Settings,
+  which have nothing to filter. It belongs to the lens bar and is hidden with it.
+- **A search run from elsewhere published `#library`**, an address kept only for links made
+  before the three tabs existed. It publishes `#explore` now; the old address still resolves.
+- **Reloading onto the Timeline threw the restored search away.** The rule was "any tab but
+  Library means leave it behind", which was right while Search was a destination and wrong once
+  a search reaches every arrangement of the photos. It is kept on the Grid and the Timeline,
+  and the lens on screen regroups the results.
+- Chat's tool descriptions and its "no one has been named yet" note referred to a *People tab*.
+  They name **Explore → People**.
+
+### Removed
+
+- `VIEW_SECTION`, a lookup table mapping Favourites to the Library's section. Nothing could
+  reach it any more — `showTab` turns Favourites into a scope before the section is chosen —
+  and the test that covered it asserted the table rather than the behaviour. The test now
+  presses the route and checks what is on screen.
+
+### Documentation
+
+- **ARCHITECTURE.md → Navigation** rewritten: the tab/lens/scope model, the address table
+  showing where every old address lands, how a switch happens, and what survives one.
+- **ARCHITECTURE.md → Browsing** now leads with `exploreRecords()` / `exploreStamp()` — one
+  list, several arrangements — and why two lists were the bug.
+- **ARCHITECTURE.md → The search field** documents the Filters panel, the typed operators, and
+  why name interpretation is off in this field.
+- **ARCHITECTURE.md → Favourites** describes a scope rather than a tab.
+- **Two duplicated sections repaired**, both merge artefacts: the ranking steps were listed
+  twice in different words, and the whole *Safety properties* chapter appeared twice. The flat
+  copy carried four facts the structured one lacked — restore validation, non-atomic restores,
+  serialised people edits, and that a write timeout does not cancel the write — which are
+  folded in rather than dropped.
+- **README → Using the app** rewritten around the three tabs and four lenses, with the search
+  operators and the link table.
+- **OPERATIONS.md → Faces** rewritten: where scanning lives versus naming, a measured
+  Originals/Thumbnails comparison, *Only photos with people*, the 45-second flush, and what
+  `src` means.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.26 (2026-10-04)
 

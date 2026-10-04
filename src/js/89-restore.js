@@ -58,10 +58,17 @@ function restoreView(){
   setTimeout(async () => {
     try {
       const searching = GAL.chips.length || GAL.texts.length;
-      if (searching && curTab !== "library"){            // another tab is up; leave the search behind
+      /* A search reaches every arrangement of the photos now, so reloading onto
+         the Timeline keeps it. It is only left behind where there is no grid of
+         results to come back to. */
+      const arranging = SCOPED_LENSES.includes(curTab);
+      if (searching && !arranging){
         GAL.chips = []; GAL.texts = []; sgRenderChips();
-      } else if (searching) await runSearch(true);
-      else if (s.removed && curTab === "library") await galSetView("removed");
+      } else if (searching){
+        await runSearch(true);
+        refreshActiveTab();            // the lens on screen regroups the results
+      }
+      else if (s.removed && arranging) await setScope("removed");
       if (s.open && curTab !== "chat"){
         const i = GAL.list.findIndex(x => x.r.id === s.open);
         if (i >= 0 && !VW.open && !$("#tab-library").hidden) openViewer(i);

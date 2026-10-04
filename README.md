@@ -82,6 +82,9 @@ The current version is shown in the app's footer; the [ChangeLog](ChangeLog.md) 
   - [2. Open the app](#2-open-the-app)
   - [3. Connect, then scan](#3-connect-then-scan)
 - [Using the app](#using-the-app)
+  - [Explore: one set of photos, four lenses](#explore-one-set-of-photos-four-lenses)
+  - [Searching](#searching)
+  - [Links](#links)
 - [How it works](#how-it-works)
 - [Where your photos and data live](#where-your-photos-and-data-live)
 - [Principles](#principles)
@@ -170,34 +173,68 @@ in **[docs/SETUP.md](docs/SETUP.md)**.
 
 ## Using the app
 
+**Three tabs, split by what you are doing.**
+
 | tab | what it is for |
 |---|---|
-| **Favourites** | Your hearted photos, in the same grid. Click the ♡ that appears on a photo (or press `F` in the viewer) to favourite it; in Select mode the **Favourite** button hearts the whole selection. `#favourites` links straight here. |
-| **Library** | Every photo in one grid. The **Size** slider changes density. Click a photo and it grows out of its tile into a full-window viewer: `←` `→` step through photos, `R` rotates right, `Shift+R` rotates left, `I` shows details, `Esc` closes. **Select** enables multi-select (click, shift-click for a range, `⌘/Ctrl+A`); the rotate buttons turn the whole selection and **Remove** hides it. **Removed (N)** lists what you hid so you can **Restore** it. |
-| **Chat** | Ask about your photos in plain language. Shows which tools the model used and the photos it found; click one for the full image and its metadata. |
-| **Timeline** | Browse by day, newest first, with places and occasions in the headings, a year bar and a date picker. |
-| **People** | Find faces, review the groups, name them, merge and split. Names then work in search and chat. |
-| **Scan** | The plan (what is new, changed, failed or missing), progress, retry, backups, thumbnail rebuild. |
+| **Explore** | Looking at, finding and organising your photos. Everything that is a *way of looking* is a lens here, so you never have to go somewhere else and start again. |
+| **Scan** | Building and maintaining the index: the plan (what is new, changed, failed or missing), progress, retry, faces, backups, thumbnail rebuild. |
 | **Settings** | Server URL and connection test, model roles, folder and index location, scan and date settings, backups, the self-test. |
 
-**Links to tabs.** Every tab has its own address, so you can bookmark or share a view:
-`PhotoSearch.html#library`, `#favourites`, `#chat`, `#timeline`, `#people`, `#scan` or `#settings`. Opening a
-link goes straight to that tab, choosing a tab updates the address, and the browser's Back and
-Forward buttons step through the tabs you visited. (`#selftest` is reserved for the self-test.)
+### Explore: one set of photos, four lenses
 
-**The search field.** The field in the toolbar (press `/` or `Ctrl/⌘+K` to jump to it) works like
-the one in the Photos app. Click it and you see your people; type and you get suggestions grouped
-as **People** (with their face), **Dates** (`2021`, `june`, `june 2021`, occasions such as
-Easter), **Places**, **Kinds of picture** (screenshots, documents) and **In the picture**
-(`boat`, `cake`, `forest`). Pick one and it becomes a token inside the field; keep typing and pick more to narrow the
-search, such as *Anna* + *Sicily* + *2022*. `Backspace` on an empty field removes the last
-token, and `+` or `,` finishes a word. Several people at once can also be typed as `mum + dad`
-(or `&`, `,`, `and`) when each name matches a person; the results are photos with all of them. Press Enter on the first row to search the words themselves by
-keyword and meaning. Results appear in the Library, so you can open, step through, select,
-rotate and remove them. Remove a chip, or **Clear search**, to widen it again.
+The segmented control picks **how the photos are arranged**; the dropdown beside it picks
+**which photos**. Changing the lens never loses your place: your scope, your search, your
+selection and your scroll position all survive.
 
-**Searching** takes plain words, `"exact phrases"` in quotes, and people by name once you have
-named them. The search field is for finding; the Library is for looking; Chat is for asking.
+| lens | what it shows |
+|---|---|
+| **Grid** | Every photo in one grid. The **Size** slider changes density. Click a photo and it grows out of its tile into a full-window viewer: `←` `→` step through, `R` rotates right, `Shift+R` rotates left, `I` shows details, `Esc` closes. **Select** enables multi-select (click, shift-click for a range, `⌘/Ctrl+A`); the rotate buttons turn the whole selection and **Remove** hides it. |
+| **Timeline** | The same photos by day, newest first, with places and occasions in the headings, a year bar and a date picker. |
+| **People** | The face groups. Name them, merge and split them; names then work in search and chat. Clicking a named person searches for them in the Grid. |
+| **Chat** | Ask about your photos in plain language. Shows which tools the model used and the photos it found. |
+
+**Scope** — *All photos*, *Favourites*, *Removed* — applies to the Grid and the Timeline.
+Click the ♡ that appears on a photo (or press `F` in the viewer) to favourite it; in Select
+mode the **Favourite** button hearts the whole selection. *Removed* lists what you hid, so you
+can restore it; removing never deletes a file.
+
+### Searching
+
+The field in the toolbar (press `/` or `Ctrl/⌘+K` to jump to it) **narrows whatever lens you
+are in** rather than taking you anywhere. Search in the Grid, switch to Timeline, and the same
+results are there grouped by day.
+
+Click it and you see your people; type and you get suggestions grouped as **People** (with
+their face), **Dates** (`2021`, `june`, `june 2021`, occasions such as Easter), **Places**,
+**Kinds of picture** (screenshots, documents) and **In the picture** (`boat`, `cake`,
+`forest`). Pick one and it becomes a token inside the field; keep picking to narrow further,
+such as *Anna* + *Sicily* + *2022*. `Backspace` on an empty field removes the last token, and
+`+` or `,` finishes a word. Several people at once can be typed as `mum + dad` (or `&`, `,`,
+`and`); the results are photos with all of them. Press Enter on the first row to search the
+words themselves by keyword and meaning.
+
+It also takes plain words and `"exact phrases"` in quotes. And you can type the filters:
+
+| type this | to |
+|---|---|
+| `-screenshot` | leave photos with that word out |
+| `-Anna` | leave that person out |
+| `place:Sicily` | narrow by place |
+| `2019..2021` | narrow by date (`2019-06..2019-08` and full dates work too) |
+
+**Filters** beside the scope dropdown opens the same things as boxes — From and To dates,
+Place, *Recognise names in my search*, *Include meaning-based matches* — with a count beside
+the button so you can always see that filters are set. Clearing the search clears them too.
+
+### Links
+
+Every view has its own address, so you can bookmark or share one:
+`PhotoSearch.html#explore`, `#explore/timeline`, `#explore/people`, `#explore/chat`, `#scan`
+or `#settings`. Opening a link goes straight there, choosing a tab or lens updates the
+address, and Back and Forward step through where you have been. Older links — `#library`,
+`#favourites`, `#search`, `#timeline`, `#people`, `#chat` — all still work. (`#selftest` is
+reserved for the self-test.)
 
 [↑ Back to Index](#index)
 
