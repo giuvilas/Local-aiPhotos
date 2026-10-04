@@ -2422,7 +2422,7 @@ async function selfTest(){
     {
       eq("#library names the Library tab", tabFromHash("#library"), "library");
       eq("#favourites names the Favourites tab", tabFromHash("#favourites"), "favourites");
-      eq("Favourites shows the Library's grid", TAB_SECTION.favourites, "library");
+      eq("Favourites shows the Library's grid", VIEW_SECTION.favourites, "library");
       eq("tab names are case-insensitive", tabFromHash("#Timeline"), "timeline");
       eq("extra parameters after a tab are ignored", tabFromHash("#people&x=1"), "people");
       eq("a leading slash is tolerated", tabFromHash("#/settings"), "settings");
@@ -2431,12 +2431,57 @@ async function selfTest(){
       eq("nor is #selftest with parameters", tabFromHash("#selftest&heic=file:///x.heic"), null);
       eq("an unknown name is not a tab", tabFromHash("#nonsense"), null);
       eq("an empty address is not a tab", tabFromHash(""), null);
-      eq("every tab has a link name", TABS.length, document.querySelectorAll("nav button").length);
-      const was = curTab;
+      eq("every top-level tab has a button", TOPS.length,
+         document.querySelectorAll("nav button").length);
+      eq("every lens has a button", LENSES.length,
+         document.querySelectorAll("#lenses button").length);
+
+      /* ---- RS-1: three tabs, and the lens that makes that possible ---- */
+      eq("#explore opens the grid", tabFromHash("#explore"), "library");
+      eq("#explore/timeline names a lens", tabFromHash("#explore/timeline"), "timeline");
+      eq("an unknown lens falls back to the grid", tabFromHash("#explore/nonsense"), "library");
+      eq("a lens still has its own address", hashFor("timeline"), "explore/timeline");
+      eq("the grid is Explore itself", hashFor("library"), "explore");
+      eq("Scan is top level", hashFor("scan"), "scan");
+      eq("#favourites carries a scope, not a view",
+         JSON.stringify(routeFromHash("#favourites")),
+         JSON.stringify({ view:"library", scope:"favourites" }));
+      eq("every lens lives under Explore", LENSES.filter(l => topOf(l) !== "explore").length, 0);
+
+      const was = curTab, wasScope = curScope;
       showTab("scan");
       ok("showing a tab selects it and hides the others",
          $("#tab-scan").hidden === false && $("#tab-chat").hidden === true
          && document.querySelector('nav button[data-tab="scan"]').getAttribute("aria-selected") === "true");
+      ok("the lens bar belongs to Explore and is hidden elsewhere", $("#lensbar").hidden === true);
+
+      showTab("timeline");
+      ok("a lens shows the lens bar", $("#lensbar").hidden === false);
+      eq("and selects Explore above it", curTop, "explore");
+      ok("with the lens itself selected",
+         document.querySelector('#lenses button[data-lens="timeline"]')
+           .getAttribute("aria-selected") === "true");
+      ok("the scope control is hidden where it would not mean anything",
+         $("#lensScopeWrap").hidden === true);
+      showTab("library");
+      ok("and shown on the grid", $("#lensScopeWrap").hidden === false);
+
+      /* The bet this whole structure rests on: a lens is a way of looking, so
+         moving between lenses must not quietly reset what you were looking at. */
+      const keptView = GAL.view;
+      /* Set the variable only: the control must be brought into line by the
+         switch itself, or asserting its value proves nothing. */
+      curScope = "favourites"; $("#lensScope").value = "all";
+      showTab("timeline"); showTab("people"); showTab("library");
+      await new Promise(r => setTimeout(r, 30));      // the grid re-scopes async
+      eq("scope survives a trip through other lenses", curScope, "favourites");
+      eq("and the control still shows it", $("#lensScope").value, "favourites");
+      eq("and the grid is actually showing that scope", GAL.view, "favourites");
+      /* Put the grid back deterministically: showTab fires galSetView without
+         awaiting it, so restoring the variable alone leaves a scoped grid
+         behind for whatever runs next -- which is how run 2 failed. */
+      curScope = wasScope; $("#lensScope").value = wasScope;
+      await galSetView(keptView);
       showTab(was);
     }
 

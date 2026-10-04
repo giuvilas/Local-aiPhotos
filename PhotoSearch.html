@@ -70,6 +70,18 @@ nav{display:flex;gap:2px;padding:2px;border-radius:10px;background:var(--panel2)
 nav button{background:none;border:0;color:var(--text);padding:5px 15px;border-radius:8px;
   font:inherit;font-weight:500;cursor:pointer;transition:background .15s,color .15s}
 nav button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+#lensbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 20px;
+  border-bottom:1px solid var(--line);background:var(--bar);
+  backdrop-filter:saturate(180%) blur(20px);position:sticky;top:var(--hdr);z-index:25}
+#lensbar .seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--panel2)}
+#lensbar .seg button{background:none;border:0;color:var(--dim);padding:5px 13px;
+  border-radius:7px;cursor:pointer;font:inherit;font-size:13px}
+#lensbar .seg button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+#lensbar .seg button[aria-selected="true"]{background:var(--panel);color:var(--text);
+  font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.14)}
+#lensScope{border:1px solid var(--line);background:var(--panel2);color:var(--text);
+  border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 nav button[aria-selected="true"]{background:var(--panel);color:var(--accent);font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,.14)}
 main{padding:22px 20px 76px;max-width:1180px;margin:0 auto}
@@ -410,12 +422,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 <header>
   <h1>PhotoSearch</h1>
   <nav role="tablist">
-    <button role="tab" data-tab="library" aria-selected="false">Library</button>
-    <button role="tab" data-tab="favourites" aria-selected="false">Favourites</button>
-    <button role="tab" data-tab="search" aria-selected="false">Search</button>
-    <button role="tab" data-tab="chat" aria-selected="false">Chat</button>
-    <button role="tab" data-tab="timeline" aria-selected="false">Timeline</button>
-    <button role="tab" data-tab="people" aria-selected="false">People</button>
+    <button role="tab" data-tab="explore" aria-selected="false">Explore</button>
     <button role="tab" data-tab="scan" aria-selected="false">Scan</button>
     <button role="tab" data-tab="settings" aria-selected="true">Settings</button>
   </nav>
@@ -434,8 +441,31 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
   </div>
 </header>
 
+  <!-- Explore's lens bar: the same photos, arranged differently. Grid, Timeline
+       and People are not destinations, so switching between them keeps the
+       scope, the search and the selection. Search and Chat sit here until they
+       become the header field (RS-3) and a drawer (RS-6). -->
+  <div id="lensbar" hidden>
+    <div class="seg" role="tablist" id="lenses">
+      <button role="tab" data-lens="library" aria-selected="true">Grid</button>
+      <button role="tab" data-lens="timeline" aria-selected="false">Timeline</button>
+      <button role="tab" data-lens="people" aria-selected="false">People</button>
+      <button role="tab" data-lens="search" aria-selected="false">Search</button>
+      <button role="tab" data-lens="chat" aria-selected="false">Chat</button>
+    </div>
+    <label class="lensScopeWrap" id="lensScopeWrap">
+      <span class="vh">Which photos</span>
+      <select id="lensScope">
+        <option value="all">All photos</option>
+        <option value="favourites">Favourites</option>
+        <option value="removed">Removed</option>
+      </select>
+    </label>
+  </div>
+
 <main>
   <div id="browserWarn" class="note" hidden></div>
+
 
   <section id="tab-search" hidden>
     <div class="card">
@@ -597,7 +627,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           Grouping strictness
           <input type="range" id="sFaceTh" min="0.20" max="0.80" step="0.01" value="0.42"
                  style="width:150px">
-          <span class="mono" id="sFaceThVal">0.75</span>
+          <span class="mono" id="sFaceThVal">0.42</span>
         </label>
       </div>
       <div id="faceStale" class="note" hidden></div>
@@ -838,7 +868,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.23";
+const APP_VERSION = "0.6.24";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -1027,48 +1057,113 @@ async function idbGet(k){ const db = await idb(); return new Promise((res, rej) 
    work, and a tab can be bookmarked or shared), and opening or changing an
    address chooses the tab. Hashes that are not a tab, such as #selftest, are
    left alone. */
-const TABS = ["library","favourites","search","chat","timeline","people","scan","settings"];
-/* Favourites is the Library's grid showing only favourites, so it has no section of its own. */
-const TAB_SECTION = { favourites:"library" };
-let curTab = "settings";
-function tabFromHash(hash){
+/* Three top-level tabs. Everything that is a way of LOOKING at the photos is a
+   lens inside Explore, because Library, Favourites, Timeline, People and search
+   results are one grid with a different filter or grouping -- five destinations
+   for one thing, each a dead end from the others.
+
+   The view ids keep their original names (library, timeline, ...) because each
+   one still owns the <section> of that name; "Grid" is only what the lens is
+   called on screen. */
+const TOPS = ["explore","scan","settings"];
+const VIEWS = ["library","timeline","people","search","chat","scan","settings"];
+const LENSES = ["library","timeline","people","search","chat"];
+/* Favourites is not a view. It is a scope over the grid, and always was: the
+   tab rendered the Library's section with a filter applied. */
+const VIEW_SECTION = { favourites:"library" };
+const SCOPES = ["all","favourites","removed"];
+function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
+function hashFor(view){
+  if (view === "library") return "explore";
+  return topOf(view) === "explore" ? "explore/" + view : view;
+}
+let curTab = "settings";      // the view
+let curTop = "settings";      // the top-level tab the view lives under
+let curScope = "all";         // Explore only: all | favourites | removed
+
+/* A route is tab/section. Every address the app used to publish still resolves,
+   because links to them exist in the docs and in saved chat history. */
+function routeFromHash(hash){
   let h = hash == null ? location.hash : hash;
   try { h = decodeURIComponent(h); } catch {}
-  h = h.replace(/^#\/?/, "").toLowerCase().split(/[&?\/]/)[0];
-  return TABS.includes(h) ? h : null;
+  h = h.replace(/^#\/?/, "").toLowerCase().split(/[&?]/)[0];
+  if (!h) return null;
+  const [a, b] = h.split("/");
+  if (a === "explore") return { view: LENSES.includes(b) ? b : "library" };
+  if (a === "favourites") return { view:"library", scope:"favourites" };
+  if (VIEWS.includes(a)) return { view:a };
+  return null;                       // #selftest and the like are left alone
 }
-/* Some tabs read the whole index, so they are built when first shown rather
+/* Kept as the name callers and the suite already use: it answers "which view
+   does this address name", with #favourites still naming itself. */
+function tabFromHash(hash){
+  const r = routeFromHash(hash);
+  if (!r) return null;
+  return r.scope === "favourites" ? "favourites" : r.view;
+}
+/* Some views read the whole index, so they are built when first shown rather
    than at boot: opening the app must not wait for them. */
 function tabShownHook(name){
   if (name === "library" && typeof onLibraryShown === "function"){
     onLibraryShown();
-    if (GAL.view === "favourites") galSetView("all");
+    /* Scope is a control now, not a consequence of which tab you arrived from.
+       It is only re-applied when it actually differs, because galSetView drops
+       the selection -- and a lens switch that silently deselects is the thing
+       this structure exists to avoid. */
+    if (typeof galSetView === "function"
+        && GAL.view !== "search" && GAL.view !== curScope) galSetView(curScope);
   }
-  if (name === "favourites" && typeof galSetView === "function") galSetView("favourites");
   if (name === "search" && typeof onSearchShown === "function") onSearchShown();
   if (name === "chat" && typeof chatFillGrids === "function") chatFillGrids();
   if (name === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
   if (name === "people" && typeof onPeopleShown === "function") onPeopleShown();
 }
-function showTab(name){
-  curTab = name;
-  document.querySelectorAll('nav button').forEach(x =>
-    x.setAttribute("aria-selected", String(x.dataset.tab === name)));
-  const sec = TAB_SECTION[name] || name;
-  TABS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
+function showTab(name, opts){
+  opts = opts || {};
+  if (name === "favourites"){ name = "library"; opts.scope = "favourites"; }
+  if (opts.scope && SCOPES.includes(opts.scope)) curScope = opts.scope;
+  curTab = name; curTop = topOf(name);
+  document.querySelectorAll("nav button").forEach(x =>
+    x.setAttribute("aria-selected", String(x.dataset.tab === curTop)));
+  const lb = $("#lensbar");
+  if (lb){
+    lb.hidden = curTop !== "explore";
+    document.querySelectorAll("#lenses button").forEach(x =>
+      x.setAttribute("aria-selected", String(x.dataset.lens === name)));
+    /* Scope reads on the grid. Timeline honours it next (RS-2); People, Search
+       and Chat answer a different question, so it is hidden rather than lying. */
+    $("#lensScopeWrap").hidden = name !== "library";
+    $("#lensScope").value = curScope;
+  }
+  const sec = VIEW_SECTION[name] || name;
+  VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
+}
+/* The scope control, and the Removed button, are two ways to set one thing. */
+async function setScope(s){
+  if (!SCOPES.includes(s)) return;
+  curScope = s;
+  if ($("#lensScope")) $("#lensScope").value = s;
+  if (curTab === "library" && typeof galSetView === "function") await galSetView(s);
 }
 /* A folder connecting after the page loaded (Chrome drops access on reload, so
    this is the normal order) must not leave the open tab on "connect a folder". */
 function refreshActiveTab(){ tabShownHook(curTab); }
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+function goTo(view, opts){
+  const h = hashFor(view);
+  if (location.hash.replace(/^#\/?/, "").toLowerCase() !== h) location.hash = h;
+  showTab(view, opts);
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   const t = b.dataset.tab;
-  if (tabFromHash() !== t) location.hash = t;      // adds a history entry
-  showTab(t);
+  /* Returning to Explore lands on the lens you left it on, not a reset. */
+  goTo(t === "explore" ? (LENSES.includes(curTab) ? curTab : "library") : t);
 });
+document.querySelectorAll("#lenses button").forEach(b => b.onclick = () => goTo(b.dataset.lens));
+if ($("#lensScope")) $("#lensScope").onchange = () => setScope($("#lensScope").value);
 window.addEventListener("hashchange", () => {
-  const t = tabFromHash();
-  if (t && t !== curTab) showTab(t);
+  const r = routeFromHash();
+  if (r && (r.view !== curTab || (r.scope && r.scope !== curScope))) showTab(r.view, r);
 });
 
 /* ================= browser gate ================= */
@@ -7686,12 +7781,9 @@ $("#galAct").onclick = galAct;
 $("#galFav").onclick = galFavSel;
 $("#galRotL").onclick = () => galRotSel(-90);
 $("#galRotR").onclick = () => galRotSel(90);
-$("#galRemoved").onclick = () => {
-  GAL.view = GAL.view === "removed" ? "all" : "removed";
-  GAL.sel.clear(); GAL.last = -1;
-  galBuild(); galBar(); galClear(); galLayout();
-  window.scrollTo(0, 0);
-};
+/* One scope, two controls. Setting GAL.view directly here left the scope
+   dropdown reading "All photos" over a grid of removed ones. */
+$("#galRemoved").onclick = () => setScope(GAL.view === "removed" ? "all" : "removed");
 document.addEventListener("keydown", e => {
   if (VW.open || $("#tab-library").hidden || !GAL.selMode) return;
   if (e.target.closest && e.target.closest("input,textarea,select")) return;
@@ -13110,7 +13202,7 @@ async function selfTest(){
     {
       eq("#library names the Library tab", tabFromHash("#library"), "library");
       eq("#favourites names the Favourites tab", tabFromHash("#favourites"), "favourites");
-      eq("Favourites shows the Library's grid", TAB_SECTION.favourites, "library");
+      eq("Favourites shows the Library's grid", VIEW_SECTION.favourites, "library");
       eq("tab names are case-insensitive", tabFromHash("#Timeline"), "timeline");
       eq("extra parameters after a tab are ignored", tabFromHash("#people&x=1"), "people");
       eq("a leading slash is tolerated", tabFromHash("#/settings"), "settings");
@@ -13119,12 +13211,57 @@ async function selfTest(){
       eq("nor is #selftest with parameters", tabFromHash("#selftest&heic=file:///x.heic"), null);
       eq("an unknown name is not a tab", tabFromHash("#nonsense"), null);
       eq("an empty address is not a tab", tabFromHash(""), null);
-      eq("every tab has a link name", TABS.length, document.querySelectorAll("nav button").length);
-      const was = curTab;
+      eq("every top-level tab has a button", TOPS.length,
+         document.querySelectorAll("nav button").length);
+      eq("every lens has a button", LENSES.length,
+         document.querySelectorAll("#lenses button").length);
+
+      /* ---- RS-1: three tabs, and the lens that makes that possible ---- */
+      eq("#explore opens the grid", tabFromHash("#explore"), "library");
+      eq("#explore/timeline names a lens", tabFromHash("#explore/timeline"), "timeline");
+      eq("an unknown lens falls back to the grid", tabFromHash("#explore/nonsense"), "library");
+      eq("a lens still has its own address", hashFor("timeline"), "explore/timeline");
+      eq("the grid is Explore itself", hashFor("library"), "explore");
+      eq("Scan is top level", hashFor("scan"), "scan");
+      eq("#favourites carries a scope, not a view",
+         JSON.stringify(routeFromHash("#favourites")),
+         JSON.stringify({ view:"library", scope:"favourites" }));
+      eq("every lens lives under Explore", LENSES.filter(l => topOf(l) !== "explore").length, 0);
+
+      const was = curTab, wasScope = curScope;
       showTab("scan");
       ok("showing a tab selects it and hides the others",
          $("#tab-scan").hidden === false && $("#tab-chat").hidden === true
          && document.querySelector('nav button[data-tab="scan"]').getAttribute("aria-selected") === "true");
+      ok("the lens bar belongs to Explore and is hidden elsewhere", $("#lensbar").hidden === true);
+
+      showTab("timeline");
+      ok("a lens shows the lens bar", $("#lensbar").hidden === false);
+      eq("and selects Explore above it", curTop, "explore");
+      ok("with the lens itself selected",
+         document.querySelector('#lenses button[data-lens="timeline"]')
+           .getAttribute("aria-selected") === "true");
+      ok("the scope control is hidden where it would not mean anything",
+         $("#lensScopeWrap").hidden === true);
+      showTab("library");
+      ok("and shown on the grid", $("#lensScopeWrap").hidden === false);
+
+      /* The bet this whole structure rests on: a lens is a way of looking, so
+         moving between lenses must not quietly reset what you were looking at. */
+      const keptView = GAL.view;
+      /* Set the variable only: the control must be brought into line by the
+         switch itself, or asserting its value proves nothing. */
+      curScope = "favourites"; $("#lensScope").value = "all";
+      showTab("timeline"); showTab("people"); showTab("library");
+      await new Promise(r => setTimeout(r, 30));      // the grid re-scopes async
+      eq("scope survives a trip through other lenses", curScope, "favourites");
+      eq("and the control still shows it", $("#lensScope").value, "favourites");
+      eq("and the grid is actually showing that scope", GAL.view, "favourites");
+      /* Put the grid back deterministically: showTab fires galSetView without
+         awaiting it, so restoring the variable alone leaves a scoped grid
+         behind for whatever runs next -- which is how run 2 failed. */
+      curScope = wasScope; $("#lensScope").value = wasScope;
+      await galSetView(keptView);
       showTab(was);
     }
 
@@ -14634,7 +14771,8 @@ if (checkBrowser()){
   // through Settings. Failure is silent here; the dot and diagnostics show it.
   autoConnect().catch(() => {});
 }
-{ const t = tabFromHash(); if (t) showTab(t); }       // open straight onto a linked tab
+/* Open straight onto a linked address, scope and all. */
+{ const r = routeFromHash(); if (r) showTab(r.view, r); }
 $("#sVersion").textContent = "PhotoSearch v" + APP_VERSION;
 /* Headless hook: open with #selftest to run the suite automatically. */
 if (location.hash === "#selftest") setTimeout(() => selfTest(), 50);

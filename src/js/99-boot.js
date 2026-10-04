@@ -61,7 +61,8 @@ if (checkBrowser()){
   // through Settings. Failure is silent here; the dot and diagnostics show it.
   autoConnect().catch(() => {});
 }
-{ const t = tabFromHash(); if (t) showTab(t); }       // open straight onto a linked tab
+/* Open straight onto a linked address, scope and all. */
+{ const r = routeFromHash(); if (r) showTab(r.view, r); }
 $("#sVersion").textContent = "PhotoSearch v" + APP_VERSION;
 /* Headless hook: open with #selftest to run the suite automatically. */
 if (location.hash === "#selftest") setTimeout(() => selfTest(), 50);

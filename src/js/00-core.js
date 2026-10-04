@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.23";
+const APP_VERSION = "0.6.24";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -189,48 +189,113 @@ async function idbGet(k){ const db = await idb(); return new Promise((res, rej) 
    work, and a tab can be bookmarked or shared), and opening or changing an
    address chooses the tab. Hashes that are not a tab, such as #selftest, are
    left alone. */
-const TABS = ["library","favourites","search","chat","timeline","people","scan","settings"];
-/* Favourites is the Library's grid showing only favourites, so it has no section of its own. */
-const TAB_SECTION = { favourites:"library" };
-let curTab = "settings";
-function tabFromHash(hash){
+/* Three top-level tabs. Everything that is a way of LOOKING at the photos is a
+   lens inside Explore, because Library, Favourites, Timeline, People and search
+   results are one grid with a different filter or grouping -- five destinations
+   for one thing, each a dead end from the others.
+
+   The view ids keep their original names (library, timeline, ...) because each
+   one still owns the <section> of that name; "Grid" is only what the lens is
+   called on screen. */
+const TOPS = ["explore","scan","settings"];
+const VIEWS = ["library","timeline","people","search","chat","scan","settings"];
+const LENSES = ["library","timeline","people","search","chat"];
+/* Favourites is not a view. It is a scope over the grid, and always was: the
+   tab rendered the Library's section with a filter applied. */
+const VIEW_SECTION = { favourites:"library" };
+const SCOPES = ["all","favourites","removed"];
+function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
+function hashFor(view){
+  if (view === "library") return "explore";
+  return topOf(view) === "explore" ? "explore/" + view : view;
+}
+let curTab = "settings";      // the view
+let curTop = "settings";      // the top-level tab the view lives under
+let curScope = "all";         // Explore only: all | favourites | removed
+
+/* A route is tab/section. Every address the app used to publish still resolves,
+   because links to them exist in the docs and in saved chat history. */
+function routeFromHash(hash){
   let h = hash == null ? location.hash : hash;
   try { h = decodeURIComponent(h); } catch {}
-  h = h.replace(/^#\/?/, "").toLowerCase().split(/[&?\/]/)[0];
-  return TABS.includes(h) ? h : null;
+  h = h.replace(/^#\/?/, "").toLowerCase().split(/[&?]/)[0];
+  if (!h) return null;
+  const [a, b] = h.split("/");
+  if (a === "explore") return { view: LENSES.includes(b) ? b : "library" };
+  if (a === "favourites") return { view:"library", scope:"favourites" };
+  if (VIEWS.includes(a)) return { view:a };
+  return null;                       // #selftest and the like are left alone
 }
-/* Some tabs read the whole index, so they are built when first shown rather
+/* Kept as the name callers and the suite already use: it answers "which view
+   does this address name", with #favourites still naming itself. */
+function tabFromHash(hash){
+  const r = routeFromHash(hash);
+  if (!r) return null;
+  return r.scope === "favourites" ? "favourites" : r.view;
+}
+/* Some views read the whole index, so they are built when first shown rather
    than at boot: opening the app must not wait for them. */
 function tabShownHook(name){
   if (name === "library" && typeof onLibraryShown === "function"){
     onLibraryShown();
-    if (GAL.view === "favourites") galSetView("all");
+    /* Scope is a control now, not a consequence of which tab you arrived from.
+       It is only re-applied when it actually differs, because galSetView drops
+       the selection -- and a lens switch that silently deselects is the thing
+       this structure exists to avoid. */
+    if (typeof galSetView === "function"
+        && GAL.view !== "search" && GAL.view !== curScope) galSetView(curScope);
   }
-  if (name === "favourites" && typeof galSetView === "function") galSetView("favourites");
   if (name === "search" && typeof onSearchShown === "function") onSearchShown();
   if (name === "chat" && typeof chatFillGrids === "function") chatFillGrids();
   if (name === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
   if (name === "people" && typeof onPeopleShown === "function") onPeopleShown();
 }
-function showTab(name){
-  curTab = name;
-  document.querySelectorAll('nav button').forEach(x =>
-    x.setAttribute("aria-selected", String(x.dataset.tab === name)));
-  const sec = TAB_SECTION[name] || name;
-  TABS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
+function showTab(name, opts){
+  opts = opts || {};
+  if (name === "favourites"){ name = "library"; opts.scope = "favourites"; }
+  if (opts.scope && SCOPES.includes(opts.scope)) curScope = opts.scope;
+  curTab = name; curTop = topOf(name);
+  document.querySelectorAll("nav button").forEach(x =>
+    x.setAttribute("aria-selected", String(x.dataset.tab === curTop)));
+  const lb = $("#lensbar");
+  if (lb){
+    lb.hidden = curTop !== "explore";
+    document.querySelectorAll("#lenses button").forEach(x =>
+      x.setAttribute("aria-selected", String(x.dataset.lens === name)));
+    /* Scope reads on the grid. Timeline honours it next (RS-2); People, Search
+       and Chat answer a different question, so it is hidden rather than lying. */
+    $("#lensScopeWrap").hidden = name !== "library";
+    $("#lensScope").value = curScope;
+  }
+  const sec = VIEW_SECTION[name] || name;
+  VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
+}
+/* The scope control, and the Removed button, are two ways to set one thing. */
+async function setScope(s){
+  if (!SCOPES.includes(s)) return;
+  curScope = s;
+  if ($("#lensScope")) $("#lensScope").value = s;
+  if (curTab === "library" && typeof galSetView === "function") await galSetView(s);
 }
 /* A folder connecting after the page loaded (Chrome drops access on reload, so
    this is the normal order) must not leave the open tab on "connect a folder". */
 function refreshActiveTab(){ tabShownHook(curTab); }
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+function goTo(view, opts){
+  const h = hashFor(view);
+  if (location.hash.replace(/^#\/?/, "").toLowerCase() !== h) location.hash = h;
+  showTab(view, opts);
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   const t = b.dataset.tab;
-  if (tabFromHash() !== t) location.hash = t;      // adds a history entry
-  showTab(t);
+  /* Returning to Explore lands on the lens you left it on, not a reset. */
+  goTo(t === "explore" ? (LENSES.includes(curTab) ? curTab : "library") : t);
 });
+document.querySelectorAll("#lenses button").forEach(b => b.onclick = () => goTo(b.dataset.lens));
+if ($("#lensScope")) $("#lensScope").onchange = () => setScope($("#lensScope").value);
 window.addEventListener("hashchange", () => {
-  const t = tabFromHash();
-  if (t && t !== curTab) showTab(t);
+  const r = routeFromHash();
+  if (r && (r.view !== curTab || (r.scope && r.scope !== curScope))) showTab(r.view, r);
 });
 
 /* ================= browser gate ================= */

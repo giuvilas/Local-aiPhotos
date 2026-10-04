@@ -434,12 +434,9 @@ $("#galAct").onclick = galAct;
 $("#galFav").onclick = galFavSel;
 $("#galRotL").onclick = () => galRotSel(-90);
 $("#galRotR").onclick = () => galRotSel(90);
-$("#galRemoved").onclick = () => {
-  GAL.view = GAL.view === "removed" ? "all" : "removed";
-  GAL.sel.clear(); GAL.last = -1;
-  galBuild(); galBar(); galClear(); galLayout();
-  window.scrollTo(0, 0);
-};
+/* One scope, two controls. Setting GAL.view directly here left the scope
+   dropdown reading "All photos" over a grid of removed ones. */
+$("#galRemoved").onclick = () => setScope(GAL.view === "removed" ? "all" : "removed");
 document.addEventListener("keydown", e => {
   if (VW.open || $("#tab-library").hidden || !GAL.selMode) return;
   if (e.target.closest && e.target.closest("input,textarea,select")) return;

@@ -70,6 +70,18 @@ nav{display:flex;gap:2px;padding:2px;border-radius:10px;background:var(--panel2)
 nav button{background:none;border:0;color:var(--text);padding:5px 15px;border-radius:8px;
   font:inherit;font-weight:500;cursor:pointer;transition:background .15s,color .15s}
 nav button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+#lensbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 20px;
+  border-bottom:1px solid var(--line);background:var(--bar);
+  backdrop-filter:saturate(180%) blur(20px);position:sticky;top:var(--hdr);z-index:25}
+#lensbar .seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--panel2)}
+#lensbar .seg button{background:none;border:0;color:var(--dim);padding:5px 13px;
+  border-radius:7px;cursor:pointer;font:inherit;font-size:13px}
+#lensbar .seg button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+#lensbar .seg button[aria-selected="true"]{background:var(--panel);color:var(--text);
+  font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.14)}
+#lensScope{border:1px solid var(--line);background:var(--panel2);color:var(--text);
+  border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 nav button[aria-selected="true"]{background:var(--panel);color:var(--accent);font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,.14)}
 main{padding:22px 20px 76px;max-width:1180px;margin:0 auto}
@@ -410,12 +422,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 <header>
   <h1>PhotoSearch</h1>
   <nav role="tablist">
-    <button role="tab" data-tab="library" aria-selected="false">Library</button>
-    <button role="tab" data-tab="favourites" aria-selected="false">Favourites</button>
-    <button role="tab" data-tab="search" aria-selected="false">Search</button>
-    <button role="tab" data-tab="chat" aria-selected="false">Chat</button>
-    <button role="tab" data-tab="timeline" aria-selected="false">Timeline</button>
-    <button role="tab" data-tab="people" aria-selected="false">People</button>
+    <button role="tab" data-tab="explore" aria-selected="false">Explore</button>
     <button role="tab" data-tab="scan" aria-selected="false">Scan</button>
     <button role="tab" data-tab="settings" aria-selected="true">Settings</button>
   </nav>
@@ -434,8 +441,31 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
   </div>
 </header>
 
+  <!-- Explore's lens bar: the same photos, arranged differently. Grid, Timeline
+       and People are not destinations, so switching between them keeps the
+       scope, the search and the selection. Search and Chat sit here until they
+       become the header field (RS-3) and a drawer (RS-6). -->
+  <div id="lensbar" hidden>
+    <div class="seg" role="tablist" id="lenses">
+      <button role="tab" data-lens="library" aria-selected="true">Grid</button>
+      <button role="tab" data-lens="timeline" aria-selected="false">Timeline</button>
+      <button role="tab" data-lens="people" aria-selected="false">People</button>
+      <button role="tab" data-lens="search" aria-selected="false">Search</button>
+      <button role="tab" data-lens="chat" aria-selected="false">Chat</button>
+    </div>
+    <label class="lensScopeWrap" id="lensScopeWrap">
+      <span class="vh">Which photos</span>
+      <select id="lensScope">
+        <option value="all">All photos</option>
+        <option value="favourites">Favourites</option>
+        <option value="removed">Removed</option>
+      </select>
+    </label>
+  </div>
+
 <main>
   <div id="browserWarn" class="note" hidden></div>
+
 
   <section id="tab-search" hidden>
     <div class="card">
@@ -597,7 +627,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           Grouping strictness
           <input type="range" id="sFaceTh" min="0.20" max="0.80" step="0.01" value="0.42"
                  style="width:150px">
-          <span class="mono" id="sFaceThVal">0.75</span>
+          <span class="mono" id="sFaceThVal">0.42</span>
         </label>
       </div>
       <div id="faceStale" class="note" hidden></div>
