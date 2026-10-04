@@ -2057,6 +2057,59 @@ async function selfTest(){
       eq("and still keeps undated photos last", GAL.list[600].r.id, "Lundated");
       GAL.desc = true; galBuild();
 
+      /* ---- RS-2: one list, two arrangements ----
+         Grid and Timeline must be the SAME photos laid out differently. Each
+         used to walk IDX.records with its own copy of the filter, so a search
+         or a scope simply did not survive looking at those photos by date --
+         which is the whole reason Timeline was a destination and not a lens. */
+      {
+        const keepView = GAL.view, keepResults = GAL.results, keepTL = TL.built;
+        try {
+          IDX.records.get("L5").favourite = true;
+          IDX.records.get("L9").favourite = true;
+          IDX.records.get("L12").hidden = true;
+
+          GAL.view = "all"; galBuild();
+          const gridAll = GAL.list.length;
+          buildTimeline();
+          eq("the timeline counts what the grid lists", TL.total, gridAll);
+
+          GAL.view = "favourites"; galBuild();
+          eq("the grid scopes to favourites", GAL.list.length, 2);
+          buildTimeline();
+          eq("and so does the timeline, from the same list", TL.total, 2);
+
+          GAL.view = "removed"; galBuild();
+          eq("removed photos are their own scope in the grid", GAL.list.length, 1);
+          buildTimeline();
+          eq("and in the timeline", TL.total, 1);
+
+          /* The claim the structure is sold on: search in one arrangement,
+             switch arrangement, same photos regrouped. */
+          GAL.view = "search"; GAL.results = ["L3","L7","L11"]; galBuild();
+          eq("search results are what the grid shows", GAL.list.length, 3);
+          buildTimeline();
+          eq("and the timeline shows exactly those", TL.total, 3);
+          const inDays = TL.days.flatMap(d => d.recs.map(r => r.id)).sort();
+          eq("the same photos, not merely the same count",
+             inDays.join(","), "L11,L3,L7");
+
+          /* A cache keyed on the record count cannot see any of this: the
+             count never moved while every day in the timeline changed. */
+          const stampSearch = exploreStamp();
+          GAL.view = "all"; galBuild();
+          ok("the timeline's cache key notices a scope change with no new records",
+             exploreStamp() !== stampSearch, exploreStamp() + " vs " + stampSearch);
+
+          delete IDX.records.get("L5").favourite;
+          delete IDX.records.get("L9").favourite;
+          delete IDX.records.get("L12").hidden;
+        } finally {
+          GAL.view = keepView; GAL.results = keepResults; TL.built = keepTL;
+          galBuild();
+        }
+      }
+
       sec.hidden = false;
       try {
         /* Windowing is relative to the viewport, so an earlier test that
@@ -2461,7 +2514,10 @@ async function selfTest(){
       ok("with the lens itself selected",
          document.querySelector('#lenses button[data-lens="timeline"]')
            .getAttribute("aria-selected") === "true");
-      ok("the scope control is hidden where it would not mean anything",
+      ok("the scope reaches the timeline too, so it is offered there",
+         $("#lensScopeWrap").hidden === false);
+      showTab("people");
+      ok("and hidden where it would not mean anything",
          $("#lensScopeWrap").hidden === true);
       showTab("library");
       ok("and shown on the grid", $("#lensScopeWrap").hidden === false);
@@ -2482,6 +2538,37 @@ async function selfTest(){
          behind for whatever runs next -- which is how run 2 failed. */
       curScope = wasScope; $("#lensScope").value = wasScope;
       await galSetView(keptView);
+
+      /* A selection is work. Looking at the same photos another way must not
+         throw it away -- only a change of scope does, because then the photos
+         selected may not be in front of you any more. */
+      {
+        const keptSel = new Set(GAL.sel);
+        GAL.sel.clear();
+        for (const x of GAL.list.slice(0, 3)) GAL.sel.add(x.r.id);
+        const picked = [...GAL.sel].join(",");
+        ok("there is a selection to lose", GAL.sel.size === 3, String(GAL.sel.size));
+        showTab("timeline"); showTab("people"); showTab("library");
+        await new Promise(r => setTimeout(r, 30));
+        eq("the selection survives a trip through other lenses",
+           [...GAL.sel].join(","), picked);
+        GAL.sel.clear();
+        for (const id of keptSel) GAL.sel.add(id);
+      }
+
+      /* Each lens remembers where it was left; coming back lands there. */
+      {
+        document.body.style.minHeight = "4000px";
+        showTab("library");
+        window.scrollTo(0, 900);
+        showTab("timeline");
+        await new Promise(r => setTimeout(r, 120));
+        showTab("library");
+        await new Promise(r => setTimeout(r, 120));
+        eq("a lens comes back where it was left", Math.round(window.scrollY), 900);
+        document.body.style.minHeight = "";
+        window.scrollTo(0, 0);
+      }
       showTab(was);
     }
 

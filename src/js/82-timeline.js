@@ -38,8 +38,10 @@ function tlDayLabel(key){
 function buildTimeline(){
   const byDay = new Map();
   let undated = 0, total = 0;
-  for (const r of IDX.records.values()){
-    if (r.deleted || r.hidden || r.status === "error") continue;
+  /* The same list the grid is showing, grouped by day instead of laid out flat.
+     Walking IDX.records here again is what made Timeline a destination rather
+     than a lens: the scope and the search simply did not reach it. */
+  for (const r of exploreRecords()){
     total++;
     const key = tlDayKey(r);
     if (!key){ undated++; continue; }
@@ -210,7 +212,10 @@ function renderTimeline(){
 let tlLoading = false;
 async function onTimelineShown(force){
   if (tlLoading) return;
-  if (!force && TL.built && TL.built === IDX.records.size) return;
+  /* Keyed on what is being looked at, not only on how many records exist:
+     changing scope or running a search leaves the record count identical while
+     changing every day in the timeline. */
+  if (!force && TL.built && TL.built === exploreStamp()) return;
   tlLoading = true;
   const body = $("#tlBody");
   try {
@@ -227,7 +232,7 @@ async function onTimelineShown(force){
       await loadRecords();
     }
     buildTimeline();
-    TL.built = IDX.records.size;
+    TL.built = exploreStamp();
     renderTimeline();
   } catch (e){
     body.textContent = "";

@@ -868,7 +868,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.24";
+const APP_VERSION = "0.6.25";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -1072,6 +1072,8 @@ const LENSES = ["library","timeline","people","search","chat"];
    tab rendered the Library's section with a filter applied. */
 const VIEW_SECTION = { favourites:"library" };
 const SCOPES = ["all","favourites","removed"];
+/* The lenses that arrange photos, and so can be scoped. */
+const SCOPED_LENSES = ["library","timeline"];
 function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
 function hashFor(view){
   if (view === "library") return "explore";
@@ -1118,8 +1120,12 @@ function tabShownHook(name){
   if (name === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
   if (name === "people" && typeof onPeopleShown === "function") onPeopleShown();
 }
+/* Where each lens was left. A lens is a way of looking at one thing, so coming
+   back to it should put you where you were, not at the top. */
+const LENS_SCROLL = {};
 function showTab(name, opts){
   opts = opts || {};
+  if (curTab !== name) LENS_SCROLL[curTab] = window.scrollY;
   if (name === "favourites"){ name = "library"; opts.scope = "favourites"; }
   if (opts.scope && SCOPES.includes(opts.scope)) curScope = opts.scope;
   curTab = name; curTop = topOf(name);
@@ -1130,21 +1136,36 @@ function showTab(name, opts){
     lb.hidden = curTop !== "explore";
     document.querySelectorAll("#lenses button").forEach(x =>
       x.setAttribute("aria-selected", String(x.dataset.lens === name)));
-    /* Scope reads on the grid. Timeline honours it next (RS-2); People, Search
-       and Chat answer a different question, so it is hidden rather than lying. */
-    $("#lensScopeWrap").hidden = name !== "library";
+    /* Scope reads on the arrangements of photos. People, Search and Chat
+       answer a different question, so it is hidden rather than lying. */
+    $("#lensScopeWrap").hidden = !SCOPED_LENSES.includes(name);
     $("#lensScope").value = curScope;
   }
   const sec = VIEW_SECTION[name] || name;
   VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
+  restoreLensScroll(name);
+}
+/* After the hook, because a lens builds its content when first shown and there
+   is no height to scroll into until it has. */
+function restoreLensScroll(name){
+  const y = LENS_SCROLL[name] || 0;
+  const put = () => { if (curTab === name) window.scrollTo(0, y); };
+  put(); requestAnimationFrame(put); setTimeout(put, 80);
 }
 /* The scope control, and the Removed button, are two ways to set one thing. */
 async function setScope(s){
   if (!SCOPES.includes(s)) return;
   curScope = s;
   if ($("#lensScope")) $("#lensScope").value = s;
-  if (curTab === "library" && typeof galSetView === "function") await galSetView(s);
+  /* GAL.view is where the scope lives for EVERY lens, not just the grid: the
+     timeline reads the same list. Set it even when the grid is off screen, or
+     switching lens would arrive showing the scope you just left. */
+  if (typeof galSetView === "function" && GAL.view !== s){
+    if (curTab === "library") await galSetView(s);
+    else { GAL.view = s; GAL.sel.clear(); GAL.last = -1; }
+  }
+  if (curTab === "timeline" && typeof onTimelineShown === "function") await onTimelineShown();
 }
 /* A folder connecting after the page loaded (Chrome drops access on reload, so
    this is the normal order) must not leave the open tab on "connect a folder". */
@@ -7147,8 +7168,10 @@ function tlDayLabel(key){
 function buildTimeline(){
   const byDay = new Map();
   let undated = 0, total = 0;
-  for (const r of IDX.records.values()){
-    if (r.deleted || r.hidden || r.status === "error") continue;
+  /* The same list the grid is showing, grouped by day instead of laid out flat.
+     Walking IDX.records here again is what made Timeline a destination rather
+     than a lens: the scope and the search simply did not reach it. */
+  for (const r of exploreRecords()){
     total++;
     const key = tlDayKey(r);
     if (!key){ undated++; continue; }
@@ -7319,7 +7342,10 @@ function renderTimeline(){
 let tlLoading = false;
 async function onTimelineShown(force){
   if (tlLoading) return;
-  if (!force && TL.built && TL.built === IDX.records.size) return;
+  /* Keyed on what is being looked at, not only on how many records exist:
+     changing scope or running a search leaves the record count identical while
+     changing every day in the timeline. */
+  if (!force && TL.built && TL.built === exploreStamp()) return;
   tlLoading = true;
   const body = $("#tlBody");
   try {
@@ -7336,7 +7362,7 @@ async function onTimelineShown(force){
       await loadRecords();
     }
     buildTimeline();
-    TL.built = IDX.records.size;
+    TL.built = exploreStamp();
     renderTimeline();
   } catch (e){
     body.textContent = "";
@@ -7378,40 +7404,62 @@ function galSortKey(r){
   const k = tlDayKey(r);
   return k ? Date.parse(k) : null;
 }
-function galBuild(){
+/* ---- the one list every lens draws from ----
+   Scope and search decide WHICH photos; a lens only decides how they are
+   arranged. The Library and the Timeline each used to walk IDX.records with
+   their own copy of this filter, which is exactly why a search was lost the
+   moment you looked at the same photos by date: two lists, two answers. In
+   search view the ranker's order is kept, and records are looked up afresh so a
+   photo removed or rotated since the search is still right. */
+function exploreRecords(){
+  const out = [];
   if (GAL.view === "search"){
-    /* Search results keep the order the ranker gave them. Records are looked up
-       afresh, so a photo removed or rotated since the search is still right. */
-    const list = [];
-    let removed = 0;
-    for (const r of IDX.records.values())
-      if (r.hidden && !r.deleted && r.status !== "error") removed++;
     for (const id of GAL.results){
       const r = IDX.records.get(id);
-      if (r && !r.hidden && !r.deleted && r.status !== "error") list.push({ r, t:galSortKey(r) });
+      if (r && !r.hidden && !r.deleted && r.status !== "error") out.push(r);
     }
-    GAL.list = list; GAL.undated = 0; GAL.removed = removed;
-    const inList = new Set(list.map(x => x.r.id));
-    for (const id of GAL.sel) if (!inList.has(id)) GAL.sel.delete(id);
-    return;
+    return out;
   }
-  const dated = [], undated = [];
-  let removed = 0;
   for (const r of IDX.records.values()){
     if (r.deleted || r.status === "error") continue;
     /* `hidden` is the user's "remove from library". It is deliberately not
        `deleted`: the scan plan treats a deleted record as absent and would
        index the same file again on the next scan. */
-    if (r.hidden) removed++;
     if (!!r.hidden !== (GAL.view === "removed")) continue;
     if (GAL.view === "favourites" && !r.favourite) continue;
-    const t = galSortKey(r);
-    (t == null ? undated : dated).push({ r, t });
+    out.push(r);
   }
-  dated.sort((a, b) => GAL.desc ? b.t - a.t : a.t - b.t);
-  GAL.list = dated.concat(undated);
-  GAL.undated = undated.length;
-  GAL.removed = removed;
+  return out;
+}
+/* A signature of what the lenses are currently looking at, so a lens that
+   caches its arrangement knows when the answer underneath it has changed. */
+function exploreStamp(){
+  return [GAL.view, IDX.records.size,
+          GAL.view === "search" ? GAL.results.length : 0,
+          GAL.chips.length, GAL.texts.length].join("|");
+}
+function galCountRemoved(){
+  let removed = 0;
+  for (const r of IDX.records.values())
+    if (r.hidden && !r.deleted && r.status !== "error") removed++;
+  return removed;
+}
+function galBuild(){
+  const recs = exploreRecords();
+  GAL.removed = galCountRemoved();
+  if (GAL.view === "search"){
+    GAL.list = recs.map(r => ({ r, t:galSortKey(r) }));
+    GAL.undated = 0;
+  } else {
+    const dated = [], undated = [];
+    for (const r of recs){
+      const t = galSortKey(r);
+      (t == null ? undated : dated).push({ r, t });
+    }
+    dated.sort((a, b) => GAL.desc ? b.t - a.t : a.t - b.t);
+    GAL.list = dated.concat(undated);
+    GAL.undated = undated.length;
+  }
   const inList = new Set(GAL.list.map(x => x.r.id));
   for (const id of GAL.sel) if (!inList.has(id)) GAL.sel.delete(id);
 }
@@ -12837,6 +12885,59 @@ async function selfTest(){
       eq("and still keeps undated photos last", GAL.list[600].r.id, "Lundated");
       GAL.desc = true; galBuild();
 
+      /* ---- RS-2: one list, two arrangements ----
+         Grid and Timeline must be the SAME photos laid out differently. Each
+         used to walk IDX.records with its own copy of the filter, so a search
+         or a scope simply did not survive looking at those photos by date --
+         which is the whole reason Timeline was a destination and not a lens. */
+      {
+        const keepView = GAL.view, keepResults = GAL.results, keepTL = TL.built;
+        try {
+          IDX.records.get("L5").favourite = true;
+          IDX.records.get("L9").favourite = true;
+          IDX.records.get("L12").hidden = true;
+
+          GAL.view = "all"; galBuild();
+          const gridAll = GAL.list.length;
+          buildTimeline();
+          eq("the timeline counts what the grid lists", TL.total, gridAll);
+
+          GAL.view = "favourites"; galBuild();
+          eq("the grid scopes to favourites", GAL.list.length, 2);
+          buildTimeline();
+          eq("and so does the timeline, from the same list", TL.total, 2);
+
+          GAL.view = "removed"; galBuild();
+          eq("removed photos are their own scope in the grid", GAL.list.length, 1);
+          buildTimeline();
+          eq("and in the timeline", TL.total, 1);
+
+          /* The claim the structure is sold on: search in one arrangement,
+             switch arrangement, same photos regrouped. */
+          GAL.view = "search"; GAL.results = ["L3","L7","L11"]; galBuild();
+          eq("search results are what the grid shows", GAL.list.length, 3);
+          buildTimeline();
+          eq("and the timeline shows exactly those", TL.total, 3);
+          const inDays = TL.days.flatMap(d => d.recs.map(r => r.id)).sort();
+          eq("the same photos, not merely the same count",
+             inDays.join(","), "L11,L3,L7");
+
+          /* A cache keyed on the record count cannot see any of this: the
+             count never moved while every day in the timeline changed. */
+          const stampSearch = exploreStamp();
+          GAL.view = "all"; galBuild();
+          ok("the timeline's cache key notices a scope change with no new records",
+             exploreStamp() !== stampSearch, exploreStamp() + " vs " + stampSearch);
+
+          delete IDX.records.get("L5").favourite;
+          delete IDX.records.get("L9").favourite;
+          delete IDX.records.get("L12").hidden;
+        } finally {
+          GAL.view = keepView; GAL.results = keepResults; TL.built = keepTL;
+          galBuild();
+        }
+      }
+
       sec.hidden = false;
       try {
         /* Windowing is relative to the viewport, so an earlier test that
@@ -13241,7 +13342,10 @@ async function selfTest(){
       ok("with the lens itself selected",
          document.querySelector('#lenses button[data-lens="timeline"]')
            .getAttribute("aria-selected") === "true");
-      ok("the scope control is hidden where it would not mean anything",
+      ok("the scope reaches the timeline too, so it is offered there",
+         $("#lensScopeWrap").hidden === false);
+      showTab("people");
+      ok("and hidden where it would not mean anything",
          $("#lensScopeWrap").hidden === true);
       showTab("library");
       ok("and shown on the grid", $("#lensScopeWrap").hidden === false);
@@ -13262,6 +13366,37 @@ async function selfTest(){
          behind for whatever runs next -- which is how run 2 failed. */
       curScope = wasScope; $("#lensScope").value = wasScope;
       await galSetView(keptView);
+
+      /* A selection is work. Looking at the same photos another way must not
+         throw it away -- only a change of scope does, because then the photos
+         selected may not be in front of you any more. */
+      {
+        const keptSel = new Set(GAL.sel);
+        GAL.sel.clear();
+        for (const x of GAL.list.slice(0, 3)) GAL.sel.add(x.r.id);
+        const picked = [...GAL.sel].join(",");
+        ok("there is a selection to lose", GAL.sel.size === 3, String(GAL.sel.size));
+        showTab("timeline"); showTab("people"); showTab("library");
+        await new Promise(r => setTimeout(r, 30));
+        eq("the selection survives a trip through other lenses",
+           [...GAL.sel].join(","), picked);
+        GAL.sel.clear();
+        for (const id of keptSel) GAL.sel.add(id);
+      }
+
+      /* Each lens remembers where it was left; coming back lands there. */
+      {
+        document.body.style.minHeight = "4000px";
+        showTab("library");
+        window.scrollTo(0, 900);
+        showTab("timeline");
+        await new Promise(r => setTimeout(r, 120));
+        showTab("library");
+        await new Promise(r => setTimeout(r, 120));
+        eq("a lens comes back where it was left", Math.round(window.scrollY), 900);
+        document.body.style.minHeight = "";
+        window.scrollTo(0, 0);
+      }
       showTab(was);
     }
 

@@ -404,8 +404,8 @@ wanting it by date means starting again.
 
 | phase | work | days |
 |---|---|---:|
-| RS-1 | Routing and shell: three tabs, lens and scope controls, rail, hash routes, state preserved across lens switches | 2 |
-| RS-2 | Explore: Favourites becomes a scope; Timeline and People become lenses | 1.5 |
+| RS-1 | **Built** (v0.6.24). Routing and shell: three tabs, lens and scope controls, hash routes, scope preserved across lens switches | 2 |
+| RS-2 | **Built** (v0.6.25). Explore: one record list behind every lens, so scope and search reach the Timeline; selection and scroll position survive a lens switch | 1.5 |
 | RS-3 | Search unification — delete the Search tab, fold its exclusion, dates and toggles into the header field | 1 |
 | RS-4 | Scan: Photos · Faces · Maintenance, with a status rail | 1.5 |
 | RS-5 | Settings: Connection · Library · Scanning · Privacy & data · Diagnostics | 1.5 |

@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.24";
+const APP_VERSION = "0.6.25";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -204,6 +204,8 @@ const LENSES = ["library","timeline","people","search","chat"];
    tab rendered the Library's section with a filter applied. */
 const VIEW_SECTION = { favourites:"library" };
 const SCOPES = ["all","favourites","removed"];
+/* The lenses that arrange photos, and so can be scoped. */
+const SCOPED_LENSES = ["library","timeline"];
 function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
 function hashFor(view){
   if (view === "library") return "explore";
@@ -250,8 +252,12 @@ function tabShownHook(name){
   if (name === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
   if (name === "people" && typeof onPeopleShown === "function") onPeopleShown();
 }
+/* Where each lens was left. A lens is a way of looking at one thing, so coming
+   back to it should put you where you were, not at the top. */
+const LENS_SCROLL = {};
 function showTab(name, opts){
   opts = opts || {};
+  if (curTab !== name) LENS_SCROLL[curTab] = window.scrollY;
   if (name === "favourites"){ name = "library"; opts.scope = "favourites"; }
   if (opts.scope && SCOPES.includes(opts.scope)) curScope = opts.scope;
   curTab = name; curTop = topOf(name);
@@ -262,21 +268,36 @@ function showTab(name, opts){
     lb.hidden = curTop !== "explore";
     document.querySelectorAll("#lenses button").forEach(x =>
       x.setAttribute("aria-selected", String(x.dataset.lens === name)));
-    /* Scope reads on the grid. Timeline honours it next (RS-2); People, Search
-       and Chat answer a different question, so it is hidden rather than lying. */
-    $("#lensScopeWrap").hidden = name !== "library";
+    /* Scope reads on the arrangements of photos. People, Search and Chat
+       answer a different question, so it is hidden rather than lying. */
+    $("#lensScopeWrap").hidden = !SCOPED_LENSES.includes(name);
     $("#lensScope").value = curScope;
   }
   const sec = VIEW_SECTION[name] || name;
   VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
+  restoreLensScroll(name);
+}
+/* After the hook, because a lens builds its content when first shown and there
+   is no height to scroll into until it has. */
+function restoreLensScroll(name){
+  const y = LENS_SCROLL[name] || 0;
+  const put = () => { if (curTab === name) window.scrollTo(0, y); };
+  put(); requestAnimationFrame(put); setTimeout(put, 80);
 }
 /* The scope control, and the Removed button, are two ways to set one thing. */
 async function setScope(s){
   if (!SCOPES.includes(s)) return;
   curScope = s;
   if ($("#lensScope")) $("#lensScope").value = s;
-  if (curTab === "library" && typeof galSetView === "function") await galSetView(s);
+  /* GAL.view is where the scope lives for EVERY lens, not just the grid: the
+     timeline reads the same list. Set it even when the grid is off screen, or
+     switching lens would arrive showing the scope you just left. */
+  if (typeof galSetView === "function" && GAL.view !== s){
+    if (curTab === "library") await galSetView(s);
+    else { GAL.view = s; GAL.sel.clear(); GAL.last = -1; }
+  }
+  if (curTab === "timeline" && typeof onTimelineShown === "function") await onTimelineShown();
 }
 /* A folder connecting after the page loaded (Chrome drops access on reload, so
    this is the normal order) must not leave the open tab on "connect a folder". */

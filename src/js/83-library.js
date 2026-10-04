@@ -31,40 +31,62 @@ function galSortKey(r){
   const k = tlDayKey(r);
   return k ? Date.parse(k) : null;
 }
-function galBuild(){
+/* ---- the one list every lens draws from ----
+   Scope and search decide WHICH photos; a lens only decides how they are
+   arranged. The Library and the Timeline each used to walk IDX.records with
+   their own copy of this filter, which is exactly why a search was lost the
+   moment you looked at the same photos by date: two lists, two answers. In
+   search view the ranker's order is kept, and records are looked up afresh so a
+   photo removed or rotated since the search is still right. */
+function exploreRecords(){
+  const out = [];
   if (GAL.view === "search"){
-    /* Search results keep the order the ranker gave them. Records are looked up
-       afresh, so a photo removed or rotated since the search is still right. */
-    const list = [];
-    let removed = 0;
-    for (const r of IDX.records.values())
-      if (r.hidden && !r.deleted && r.status !== "error") removed++;
     for (const id of GAL.results){
       const r = IDX.records.get(id);
-      if (r && !r.hidden && !r.deleted && r.status !== "error") list.push({ r, t:galSortKey(r) });
+      if (r && !r.hidden && !r.deleted && r.status !== "error") out.push(r);
     }
-    GAL.list = list; GAL.undated = 0; GAL.removed = removed;
-    const inList = new Set(list.map(x => x.r.id));
-    for (const id of GAL.sel) if (!inList.has(id)) GAL.sel.delete(id);
-    return;
+    return out;
   }
-  const dated = [], undated = [];
-  let removed = 0;
   for (const r of IDX.records.values()){
     if (r.deleted || r.status === "error") continue;
     /* `hidden` is the user's "remove from library". It is deliberately not
        `deleted`: the scan plan treats a deleted record as absent and would
        index the same file again on the next scan. */
-    if (r.hidden) removed++;
     if (!!r.hidden !== (GAL.view === "removed")) continue;
     if (GAL.view === "favourites" && !r.favourite) continue;
-    const t = galSortKey(r);
-    (t == null ? undated : dated).push({ r, t });
+    out.push(r);
   }
-  dated.sort((a, b) => GAL.desc ? b.t - a.t : a.t - b.t);
-  GAL.list = dated.concat(undated);
-  GAL.undated = undated.length;
-  GAL.removed = removed;
+  return out;
+}
+/* A signature of what the lenses are currently looking at, so a lens that
+   caches its arrangement knows when the answer underneath it has changed. */
+function exploreStamp(){
+  return [GAL.view, IDX.records.size,
+          GAL.view === "search" ? GAL.results.length : 0,
+          GAL.chips.length, GAL.texts.length].join("|");
+}
+function galCountRemoved(){
+  let removed = 0;
+  for (const r of IDX.records.values())
+    if (r.hidden && !r.deleted && r.status !== "error") removed++;
+  return removed;
+}
+function galBuild(){
+  const recs = exploreRecords();
+  GAL.removed = galCountRemoved();
+  if (GAL.view === "search"){
+    GAL.list = recs.map(r => ({ r, t:galSortKey(r) }));
+    GAL.undated = 0;
+  } else {
+    const dated = [], undated = [];
+    for (const r of recs){
+      const t = galSortKey(r);
+      (t == null ? undated : dated).push({ r, t });
+    }
+    dated.sort((a, b) => GAL.desc ? b.t - a.t : a.t - b.t);
+    GAL.list = dated.concat(undated);
+    GAL.undated = undated.length;
+  }
   const inList = new Set(GAL.list.map(x => x.r.id));
   for (const id of GAL.sel) if (!inList.has(id)) GAL.sel.delete(id);
 }
