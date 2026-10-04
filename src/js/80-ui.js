@@ -396,6 +396,37 @@ enableFolderDrop("btnIndexDir", async h => {
   await refreshPlan();
 });
 
+/* ---- the Scan rail's status ----
+   Which index, which folder, how much is in it, when it last ran. Every one of
+   these was reachable only by scrolling Settings, and not knowing which index
+   was open cost a three-hour face pass written to the wrong disk. */
+function renderScanStatus(){
+  const n = $("#scanStatus");
+  if (!n) return;
+  n.textContent = "";
+  const row = (label, value, bad) => {
+    const d = el("div");
+    d.append(document.createTextNode(label + " "));
+    const b = el("b", bad ? "bad" : null, value);
+    d.append(b); n.append(d);
+  };
+  const where = (S.indexMode === "custom" && S.indexDirHandle)
+    ? S.indexDirHandle.name
+    : (S.dirHandle ? S.dirHandle.name : null);
+  row("Index", where || "not chosen", !where);
+  row("Folder", S.dirHandle ? S.dirHandle.name : "not connected", !S.dirHandle);
+  row("Records", IDX.loaded ? IDX.records.size.toLocaleString() : "\u2013");
+  /* The newest scanned_at in the index. Walking 7,039 records costs under a
+     millisecond and only happens when this tab is shown, which is cheaper than
+     keeping a field in step with every write that could set it. */
+  let newest = "";
+  if (IDX.loaded) for (const r of IDX.records.values())
+    if (r.scanned_at && r.scanned_at > newest) newest = r.scanned_at;
+  const last = newest ? new Date(newest) : null;
+  row("Last scan", last && !isNaN(last)
+    ? last.toLocaleDateString(undefined, { day:"numeric", month:"short" }) : "\u2013");
+}
+
 /* ================= plan UI ================= */
 let planAbort = null;
 async function refreshPlan(){
@@ -637,10 +668,9 @@ function updateProgress(){
   $("#progEta").textContent = (RUN.active && avg && left)
     ? "About " + fmtDur(left * avg / conc) + " remaining."
     : (RUN.active ? "Estimating…" : "");
-  /* A face run is started from the People tab, but every element above lives
-     in the Scan tab -- which is hidden at the time. Without this the run gave
-     no sign of life at all on the tab it was launched from, and looked like it
-     had done nothing. */
+  /* A face run now lives in Scan -> Faces, but naming happens in Explore ->
+     People, so the run is routinely started and then left while the person goes
+     back to browsing. Both places have to show it. */
   if (RUN.mode === "faces"){
     const fb = $("#facesBar");
     if (fb) fb.style.width = pct + "%";
@@ -653,10 +683,29 @@ function updateProgress(){
     if (fe) fe.textContent = (RUN.active && avg && left)
       ? "About " + fmtDur(left * avg / conc) + " remaining."
       : (RUN.active ? "Estimating…" : "Finished.");
-    /* The error list renders into the Scan tab, which is hidden while this one
-       is open. A run can therefore fail on almost every photo and show nothing
-       but a rising count with no reason -- which is exactly what happened on a
-       6,621-photo pass that failed 1,565 of its first 1,575. */
+    /* Explore -> People is where the names are given, and a long face run is
+       routinely started and then left. One line there beats switching tabs to
+       find out whether anything is still happening. */
+    const mir = $("#peopleRunMirror");
+    if (mir){
+      if (!RUN.active) mir.hidden = true;
+      else {
+        mir.hidden = false; mir.textContent = "";
+        mir.append(el("b", null, "Finding faces \u2014 " + pct + "%. "));
+        mir.append(document.createTextNode(
+          RUN.done.toLocaleString() + " of " + RUN.total.toLocaleString()
+          + (RUN.errorCount ? ", " + RUN.errorCount + " unreadable" : "")
+          + ". Groups appear here as they are found."));
+        const a = el("button", "btn sec");
+        a.textContent = "Show the run";
+        a.style.marginLeft = "10px";
+        a.onclick = () => goTo("scan", { section:"faces" });
+        mir.append(a);
+      }
+    }
+    /* A run can fail on almost every photo and show nothing but a rising
+       count with no reason -- which is exactly what happened on a 6,621-photo
+       pass that failed 1,565 of its first 1,575. */
     const box = $("#facesErr");
     if (box){
       if (!RUN.errors.length) box.hidden = true;

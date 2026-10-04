@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.27";
+const APP_VERSION = "0.6.28";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -207,12 +207,34 @@ const TOPS = ["explore","scan","settings"];
 const VIEWS = ["library","timeline","people","chat","scan","settings"];
 const LENSES = ["library","timeline","people","chat"];
 const SCOPES = ["all","favourites","removed"];
+/* Sections inside a tab. Scan is three jobs, not one: describing photos,
+   finding faces, and housekeeping. */
+const SECTIONS = { scan:["photos","faces","maint"] };
+const curSection = { scan:"photos" };
 /* The lenses that arrange photos, and so can be scoped. */
 const SCOPED_LENSES = ["library","timeline"];
 function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
-function hashFor(view){
+function hashFor(view, section){
   if (view === "library") return "explore";
-  return topOf(view) === "explore" ? "explore/" + view : view;
+  if (topOf(view) === "explore") return "explore/" + view;
+  const secs = SECTIONS[view];
+  const sec = section || (secs ? curSection[view] : null);
+  return secs && sec && sec !== secs[0] ? view + "/" + sec : view;
+}
+/* Shows one section of a tab that has them, and remembers it so returning to
+   the tab lands where you left it. */
+function showSection(tab, sec){
+  const secs = SECTIONS[tab];
+  if (!secs || !secs.includes(sec)) return;
+  curSection[tab] = sec;
+  const rail = $("#" + tab + "Rail");
+  if (rail) rail.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-selected", String(b.dataset.sec === sec)));
+  for (const s of secs){
+    const n = $("#" + tab + "Sec-" + s);
+    if (n) n.hidden = s !== sec;
+  }
+  if (tab === "scan" && typeof renderScanStatus === "function") renderScanStatus();
 }
 let curTab = "settings";      // the view
 let curTop = "settings";      // the top-level tab the view lives under
@@ -231,7 +253,8 @@ function routeFromHash(hash){
   /* Search was a tab and is now the field in the header, reachable from every
      lens. Its old address lands on the grid, where its results are shown. */
   if (a === "search") return { view:"library" };
-  if (VIEWS.includes(a)) return { view:a };
+  if (VIEWS.includes(a))
+    return (SECTIONS[a] || []).includes(b) ? { view:a, section:b } : { view:a };
   return null;                       // #selftest and the like are left alone
 }
 /* Kept as the name callers and the suite already use: it answers "which view
@@ -266,7 +289,7 @@ function showTab(name, opts){
   if (name === "favourites"){ name = "library"; opts.scope = "favourites"; }
   if (opts.scope && SCOPES.includes(opts.scope)) curScope = opts.scope;
   curTab = name; curTop = topOf(name);
-  document.querySelectorAll("nav button").forEach(x =>
+  document.querySelectorAll("#topTabs button").forEach(x =>
     x.setAttribute("aria-selected", String(x.dataset.tab === curTop)));
   const lb = $("#lensbar");
   if (lb){
@@ -288,6 +311,7 @@ function showTab(name, opts){
      section with a filter applied, so it is turned into a scope above and the
      section is simply the view's own. */
   const sec = name;
+  if (SECTIONS[name]) showSection(name, opts.section || curSection[name]);
   VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
   restoreLensScroll(name);
@@ -317,20 +341,27 @@ async function setScope(s){
    this is the normal order) must not leave the open tab on "connect a folder". */
 function refreshActiveTab(){ tabShownHook(curTab); }
 function goTo(view, opts){
-  const h = hashFor(view);
+  const h = hashFor(view, opts && opts.section);
   if (location.hash.replace(/^#\/?/, "").toLowerCase() !== h) location.hash = h;
   showTab(view, opts);
 }
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+document.querySelectorAll("#topTabs button").forEach(b => b.onclick = () => {
   const t = b.dataset.tab;
   /* Returning to Explore lands on the lens you left it on, not a reset. */
   goTo(t === "explore" ? (LENSES.includes(curTab) ? curTab : "library") : t);
 });
 document.querySelectorAll("#lenses button").forEach(b => b.onclick = () => goTo(b.dataset.lens));
 if ($("#lensScope")) $("#lensScope").onchange = () => setScope($("#lensScope").value);
+for (const tab of Object.keys(SECTIONS)){
+  const rail = $("#" + tab + "Rail");
+  if (rail) rail.querySelectorAll("button").forEach(b =>
+    b.onclick = () => goTo(tab, { section:b.dataset.sec }));
+}
 window.addEventListener("hashchange", () => {
   const r = routeFromHash();
-  if (r && (r.view !== curTab || (r.scope && r.scope !== curScope))) showTab(r.view, r);
+  if (!r) return;
+  if (r.view !== curTab || (r.scope && r.scope !== curScope)
+      || (r.section && r.section !== curSection[r.view])) showTab(r.view, r);
 });
 
 /* ================= browser gate ================= */

@@ -269,7 +269,7 @@ Estimates assume the existing build system and the 738-assertion suite.
 | **R-1** | **Routing and shell.** Three tabs, lens and scope controls, rail component, hash routes (`#explore/timeline`, `#scan/faces`), state preserved across lens switches. No visual change yet. | 2 |
 | **R-2** | **Explore.** Fold Favourites into scope; wire Timeline and People as lenses; keep search results across lenses. | 1.5 |
 | **R-3** | **Built** (v0.6.26). Search unification (§5): `88-searchui.js` deleted, operators and the Filters panel added. | 1 |
-| **R-4** | **Scan.** Three sections, move the face passes over, build the status rail. | 1.5 |
+| **R-4** | **Built** (v0.6.28). Scan: three sections, the face passes moved over, the status rail built. | 1.5 |
 | **R-5** | **Settings.** Five sections, Privacy & data written properly. | 1.5 |
 | **R-6** | **Chat drawer.** Results populate the grid behind it. | 1 |
 | **R-7** | **⌘K palette.** Command registry, fuzzy filter, person names. | 1 |

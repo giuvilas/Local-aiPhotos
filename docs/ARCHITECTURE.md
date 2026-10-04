@@ -167,6 +167,20 @@ and each a dead end from the others.
 | top-level tab | `explore` `scan` `settings` | what you are doing |
 | lens (Explore only) | `library` (shown as **Grid**) `timeline` `people` `chat` | how the photos are arranged |
 | scope (Explore only) | `all` `favourites` `removed` | which photos |
+| section (Scan) | `photos` `faces` `maint` | which job |
+
+A **lens** is a segmented control because four short labels fit one; a **section** is a left
+rail because three sections of ten controls do not, and because the rail has room for the
+**status** that decides whether any of it is safe to press — which index, which folder, how
+many records, when it last ran. Not knowing which index was open once cost a three-hour face
+pass written to the wrong disk, and every one of those facts was previously reachable only by
+scrolling Settings.
+
+**Scanning faces lives in Scan → Faces; naming, merging and splitting live in Explore →
+People.** One is a job you start and wait for, the other is browsing. Grouping strictness stays
+with the groups because it re-groups instantly from vectors already on disk — it changes what
+you are looking at, so it belongs where you are looking. A run started in Scan shows a one-line
+mirror in People, because a long pass is routinely started and then left.
 
 The lens ids keep their original names because each still owns the `<section>` of that name;
 "Grid" is only what the lens is called on screen.
@@ -188,7 +202,7 @@ documentation and in saved chat history:
 | `#favourites` | the Grid lens with scope `favourites` — it carries its scope |
 | `#search` | the Grid lens, where the search field's results are shown |
 | `#timeline` `#people` `#chat` | the lens of that name |
-| `#scan` `#settings` | unchanged |
+| `#scan` `#settings` | unchanged; `#scan/faces` and `#scan/maint` address a section, and the first section is just `#scan` |
 
 `tabFromHash()` remains as the "which view does this address name" helper the suite and older
 callers use, with `#favourites` still naming itself.
@@ -286,7 +300,8 @@ The index is a folder of plain files, readable with anything. By default it is
 
 **Append-only is the durability strategy.** A crash can truncate at most the final line,
 which the loader skips. The cost is that the file grows on every re-scan, since a changed
-record is appended rather than edited; **Compact log** rewrites it to latest-state-only.
+record is appended rather than edited; **Compact log** (Scan → Maintenance) rewrites it to
+latest-state-only.
 
 **Memory.** Records are *lightened* on load: `raw_model_json` and the embedding stay on
 disk. A 50,000-photo library therefore costs kilobytes per record in memory, not tens of

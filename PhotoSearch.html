@@ -66,10 +66,12 @@ header .spacer{display:none}
 .hdrRight{justify-self:end;display:flex;align-items:center;gap:14px;min-width:0}
 .hdrRight .switch{font-size:12px;color:var(--dim);white-space:nowrap}
 h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.02em}
-nav{display:flex;gap:2px;padding:2px;border-radius:10px;background:var(--panel2)}
-nav button{background:none;border:0;color:var(--text);padding:5px 15px;border-radius:8px;
+/* The top tab bar. Scoped by id: the Scan rail is navigation too, and these
+   rules would lay it out as a horizontal pill group on top of its own text. */
+#topTabs{display:flex;gap:2px;padding:2px;border-radius:10px;background:var(--panel2)}
+#topTabs button{background:none;border:0;color:var(--text);padding:5px 15px;border-radius:8px;
   font:inherit;font-weight:500;cursor:pointer;transition:background .15s,color .15s}
-nav button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+#topTabs button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
 #lensbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 20px;
   border-bottom:1px solid var(--line);background:var(--bar);
   backdrop-filter:saturate(180%) blur(20px);position:sticky;top:var(--hdr);z-index:25}
@@ -81,6 +83,37 @@ nav button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
   font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.14)}
 #lensScope{border:1px solid var(--line);background:var(--panel2);color:var(--text);
   border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+/* A section rail: three sections with ten controls each do not fit a segmented
+   control, and the rail has room for the status that decides whether any of it
+   is safe to press -- which index, which folder, when it last ran. */
+.railwrap{display:flex;align-items:flex-start;gap:0}
+.rail{display:block;width:212px;flex:0 0 212px;border-right:1px solid var(--line);padding:4px 10px 16px;
+  position:sticky;top:calc(var(--hdr) + 8px);align-self:flex-start}
+.rail h4{margin:0 0 7px 10px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--dim);font-weight:600}
+.rail button{display:block;width:100%;text-align:left;border:0;background:none;cursor:pointer;
+  padding:7px 10px;border-radius:8px;font:inherit;font-size:13.5px;color:var(--text)}
+.rail button[aria-selected="true"]{background:color-mix(in srgb,var(--accent) 14%,transparent);
+  color:var(--accent);font-weight:600}
+.rail button:hover:not([aria-selected="true"]){background:var(--panel2)}
+.rail .status{margin-top:20px;border-top:1px solid var(--line);padding:13px 10px 0;
+  font-size:12px;color:var(--dim);line-height:1.7}
+.rail .status b{color:var(--text);font-weight:600;font-family:var(--mono);font-size:11.5px;
+  word-break:break-all}
+.rail .status .bad{color:var(--warn)}
+.railpane{flex:1;min-width:0;padding-left:24px}
+.btn.sec.danger:not(:disabled){color:var(--err)}
+.btn.sec.danger:not(:disabled):hover{background:color-mix(in srgb,var(--err) 12%,transparent)}
+.railpane h2{margin:0 0 4px}
+@media (max-width:720px){
+  .railwrap{display:block}
+  .rail{width:auto;flex:none;border-right:0;border-bottom:1px solid var(--line);
+    position:static;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .rail h4{display:none}
+  .rail button{width:auto}
+  .rail .status{flex-basis:100%;margin-top:6px;border-top:0;padding-top:0}
+  .railpane{padding-left:0;padding-top:16px}
+}
 #sgMore{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding:11px 20px;
   border-bottom:1px solid var(--line);background:var(--panel2)}
 #sgMore label{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--dim)}
@@ -91,7 +124,7 @@ nav button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
   padding:1px 5px;font-family:var(--mono);font-size:12px;color:var(--text)}
 #sgFilterCount:empty{display:none}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-nav button[aria-selected="true"]{background:var(--panel);color:var(--accent);font-weight:600;
+#topTabs button[aria-selected="true"]{background:var(--panel);color:var(--accent);font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,.14)}
 main{padding:22px 20px 76px;max-width:1180px;margin:0 auto}
 section[hidden]{display:none}
@@ -430,7 +463,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 <body>
 <header>
   <h1>PhotoSearch</h1>
-  <nav role="tablist">
+  <nav role="tablist" id="topTabs">
     <button role="tab" data-tab="explore" aria-selected="false">Explore</button>
     <button role="tab" data-tab="scan" aria-selected="false">Scan</button>
     <button role="tab" data-tab="settings" aria-selected="true">Settings</button>
@@ -493,6 +526,16 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 
 
   <section id="tab-scan" hidden>
+    <div class="railwrap">
+      <nav class="rail" id="scanRail" role="tablist" aria-label="Scan sections">
+        <h4>Build the index</h4>
+        <button role="tab" data-sec="photos" aria-selected="true">Photos</button>
+        <button role="tab" data-sec="faces" aria-selected="false">Faces</button>
+        <button role="tab" data-sec="maint" aria-selected="false">Maintenance</button>
+        <div class="status" id="scanStatus"></div>
+      </nav>
+      <div class="railpane">
+        <div id="scanSec-photos">
     <div class="card">
       <h2>Plan</h2>
       <p class="hint" style="margin-top:-4px">The plan compares the photos in your folder with the index and works out what a scan
@@ -505,8 +548,6 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <button class="btn sec" id="btnFull" disabled>Full rescan</button>
         <button class="btn sec" id="btnRetry" disabled>Retry failed</button>
         <button class="btn sec" id="btnMissing" disabled>Mark missing</button>
-        <button class="btn sec" id="btnCompact">Compact log</button>
-        <button class="btn sec" id="btnThumbs">Rebuild thumbnails</button>
         <span class="spacer"></span>
         <button class="btn sec" id="btnPause" hidden>Pause</button>
         <button class="btn sec" id="btnStop" hidden>Stop</button>
@@ -531,6 +572,90 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
     <div class="card">
       <h2>Recent records</h2>
       <div id="recentBox"><span class="dim">Nothing scanned yet.</span></div>
+    </div>
+        </div>
+      <div id="scanSec-faces" hidden>
+        <h2>Faces</h2>
+        <p class="hint" style="margin-top:-4px">Finding faces and measuring them. Naming the
+          groups, merging and splitting them live under Explore &rarr; People: one is a job you
+          start and wait for, the other is browsing.</p>
+        <div class="card">
+          <div class="row" style="margin-bottom:10px">
+            <button class="btn" id="btnFaceScan">Find faces</button>
+            <button class="btn sec" id="btnRefine">Improve from originals</button>
+            <button class="btn sec" id="btnReembed">Re-measure</button>
+            <button class="btn sec" id="btnCompare">Compare models</button>
+            <button class="btn sec danger" id="btnFaceWipe">Delete all face data</button>
+          </div>
+          <div class="row">
+            <label class="hint" style="display:flex;align-items:center;gap:7px">
+              Model
+              <select id="sFaceEmb" style="background:var(--panel2);border:1px solid var(--line);
+                color:var(--text);border-radius:6px;padding:3px 7px;font-size:12px;font-family:inherit">
+                <option value="arcface">ArcFace &mdash; recognition</option>
+                <option value="faceres">faceres &mdash; comparison only</option>
+              </select>
+            </label>
+            <label class="hint" style="display:flex;align-items:center;gap:7px;margin-left:6px">
+              Read from
+              <select id="sFaceSrc" style="background:var(--panel2);border:1px solid var(--line);
+                color:var(--text);border-radius:6px;padding:3px 7px;font-size:12px;font-family:inherit">
+                <option value="originals">Originals &mdash; accurate, slow</option>
+                <option value="thumbs">Thumbnails &mdash; fast</option>
+              </select>
+            </label>
+            <label class="switch" title="Skip photos already described as having nobody in them"
+                   style="margin-left:6px"><input type="checkbox" id="sFacePeopleOnly" checked>
+              <span class="swt"> Only photos with people</span></label>
+          </div>
+          <div class="hint" style="margin-top:8px">Originals decode at 2,048&nbsp;px, where a
+            typical face clears the model&rsquo;s 112&nbsp;px input. Thumbnails are 384&nbsp;px
+            and eight minutes instead of three hours, but a measured pass left 42% of the faces
+            below that input and returned groups of mostly one photo each.</div>
+        </div>
+        <div id="facesProg" hidden class="card">
+          <div class="bar"><div id="facesBar"></div></div>
+          <div id="facesStats" class="mono" style="margin-top:9px;font-size:13px"></div>
+          <div id="facesEta" class="hint"></div>
+          <div id="facesNow" class="hint" style="word-break:break-all"></div>
+          <div id="facesErr" class="note" hidden style="margin-top:9px"></div>
+          <div class="row" style="margin-top:9px">
+            <button class="btn sec" id="btnFacesPause">Pause</button>
+            <button class="btn sec" id="btnFacesStop">Stop</button>
+          </div>
+        </div>
+        <div id="faceScanOut"></div>
+      </div>
+      <div id="scanSec-maint" hidden>
+        <h2>Maintenance</h2>
+        <p class="hint" style="margin-top:-4px">Housekeeping that needs no model. None of it
+          touches your photos; everything here works inside <code>.photoindex/</code>.</p>
+        <div class="card">
+          <div class="row">
+            <button class="btn sec" id="btnThumbs">Rebuild thumbnails</button>
+            <span class="hint" style="margin:0">From the originals, matched by content rather
+              than by path. No model calls, so it is cheap &mdash; unlike a record, which cost
+              about 21 seconds.</span>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn sec" id="btnCompact">Compact log</button>
+            <span class="hint" style="margin:0"><code>records.jsonl</code> is append-only;
+              compacting drops the lines that have since been superseded.</span>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="btnBackup">Back up now</button>
+            <button class="btn sec" id="btnBackups">Show backups</button>
+            <span class="hint" style="margin:0">How many to keep, and whether to back up after
+              every scan, are in Settings.</span>
+          </div>
+          <div class="row" style="margin-top:12px">
+                <span class="hint" style="margin:0">Copies the index somewhere else and switches to
+              it, leaving the original where it is until you are satisfied.</span>
+          </div>
+        </div>
+        <div id="maintOut"></div>
+      </div>
+      </div>
     </div>
   </section>
 
@@ -590,51 +715,18 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
   <section id="tab-people" hidden>
     <div class="card">
       <div class="row" style="margin-bottom:10px">
-        <button class="btn" id="btnFaceScan">Find faces</button>
         <button class="btn sec" id="btnRecluster">Re-group</button>
-        <button class="btn sec" id="btnRefine">Improve from originals</button>
-        <button class="btn sec" id="btnReembed">Re-measure</button>
-        <button class="btn sec" id="btnCompare">Compare models</button>
-        <button class="btn sec" id="btnFaceWipe">Delete all face data</button>
-        <label class="hint" style="display:flex;align-items:center;gap:7px;margin-left:6px">
-          Model
-          <select id="sFaceEmb" style="background:var(--panel2);border:1px solid var(--line);
-            color:var(--text);border-radius:6px;padding:3px 7px;font-size:12px;font-family:inherit">
-            <option value="arcface">ArcFace — recognition</option>
-            <option value="faceres">faceres — comparison only</option>
-          </select>
-        </label>
-        <label class="hint" style="display:flex;align-items:center;gap:7px;margin-left:6px">
-          Read from
-          <select id="sFaceSrc" style="background:var(--panel2);border:1px solid var(--line);
-            color:var(--text);border-radius:6px;padding:3px 7px;font-size:12px;font-family:inherit">
-            <option value="originals">Originals — accurate, slow</option>
-            <option value="thumbs">Thumbnails — fast</option>
-          </select>
-        </label>
-        <label class="switch" title="Skip photos already described as having nobody in them"
-               style="margin-left:6px"><input type="checkbox" id="sFacePeopleOnly" checked>
-          <span class="swt"> Only photos with people</span></label>
         <label class="hint" style="display:flex;align-items:center;gap:7px;margin-left:6px">
           Grouping strictness
           <input type="range" id="sFaceTh" min="0.20" max="0.80" step="0.01" value="0.42"
                  style="width:150px">
           <span class="mono" id="sFaceThVal">0.42</span>
         </label>
+        <span class="hint" style="margin:0">Re-grouping is instant: the measurements are
+          already on disk, so trying another strictness never re-reads a photo.</span>
       </div>
+      <div id="peopleRunMirror" class="note" hidden></div>
       <div id="faceStale" class="note" hidden></div>
-      <div id="facesProg" hidden style="margin-top:12px;border:1px solid var(--line);
-        border-radius:9px;padding:12px;background:var(--panel2)">
-        <div class="bar"><div id="facesBar"></div></div>
-        <div id="facesStats" class="mono" style="margin-top:9px;font-size:13px"></div>
-        <div id="facesEta" class="hint"></div>
-        <div id="facesNow" class="hint" style="word-break:break-all"></div>
-        <div id="facesErr" class="note" hidden style="margin-top:9px"></div>
-        <div class="row" style="margin-top:9px">
-          <button class="btn sec" id="btnFacesPause">Pause</button>
-          <button class="btn sec" id="btnFacesStop">Stop</button>
-        </div>
-      </div>
       <div class="hint" id="faceNote">Faces are grouped by how alike they look.
         Nothing is named until you name it.</div>
       <div id="faceOut"></div>
@@ -775,8 +867,8 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           <input type="checkbox" id="sBackup" checked> Back up after every scan</label></div>
         <div style="flex:0 0 120px"><label for="sKeep">Keep</label>
           <input type="text" id="sKeep" value="3"></div>
-        <button class="btn" id="btnBackup">Back up now</button>
-        <button class="btn sec" id="btnBackups">Show backups</button>
+        <span class="hint" style="margin:0">Back up now and Show backups are under
+          Scan &rarr; Maintenance.</span>
       </div>
       <div class="hint">Copies <code>records.jsonl</code>, <code>vectors.bin</code> and the
         config into <code>.photoindex/backups/</code>. Thumbnails are excluded on purpose:
@@ -860,7 +952,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.27";
+const APP_VERSION = "0.6.28";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -1067,12 +1159,34 @@ const TOPS = ["explore","scan","settings"];
 const VIEWS = ["library","timeline","people","chat","scan","settings"];
 const LENSES = ["library","timeline","people","chat"];
 const SCOPES = ["all","favourites","removed"];
+/* Sections inside a tab. Scan is three jobs, not one: describing photos,
+   finding faces, and housekeeping. */
+const SECTIONS = { scan:["photos","faces","maint"] };
+const curSection = { scan:"photos" };
 /* The lenses that arrange photos, and so can be scoped. */
 const SCOPED_LENSES = ["library","timeline"];
 function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
-function hashFor(view){
+function hashFor(view, section){
   if (view === "library") return "explore";
-  return topOf(view) === "explore" ? "explore/" + view : view;
+  if (topOf(view) === "explore") return "explore/" + view;
+  const secs = SECTIONS[view];
+  const sec = section || (secs ? curSection[view] : null);
+  return secs && sec && sec !== secs[0] ? view + "/" + sec : view;
+}
+/* Shows one section of a tab that has them, and remembers it so returning to
+   the tab lands where you left it. */
+function showSection(tab, sec){
+  const secs = SECTIONS[tab];
+  if (!secs || !secs.includes(sec)) return;
+  curSection[tab] = sec;
+  const rail = $("#" + tab + "Rail");
+  if (rail) rail.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-selected", String(b.dataset.sec === sec)));
+  for (const s of secs){
+    const n = $("#" + tab + "Sec-" + s);
+    if (n) n.hidden = s !== sec;
+  }
+  if (tab === "scan" && typeof renderScanStatus === "function") renderScanStatus();
 }
 let curTab = "settings";      // the view
 let curTop = "settings";      // the top-level tab the view lives under
@@ -1091,7 +1205,8 @@ function routeFromHash(hash){
   /* Search was a tab and is now the field in the header, reachable from every
      lens. Its old address lands on the grid, where its results are shown. */
   if (a === "search") return { view:"library" };
-  if (VIEWS.includes(a)) return { view:a };
+  if (VIEWS.includes(a))
+    return (SECTIONS[a] || []).includes(b) ? { view:a, section:b } : { view:a };
   return null;                       // #selftest and the like are left alone
 }
 /* Kept as the name callers and the suite already use: it answers "which view
@@ -1126,7 +1241,7 @@ function showTab(name, opts){
   if (name === "favourites"){ name = "library"; opts.scope = "favourites"; }
   if (opts.scope && SCOPES.includes(opts.scope)) curScope = opts.scope;
   curTab = name; curTop = topOf(name);
-  document.querySelectorAll("nav button").forEach(x =>
+  document.querySelectorAll("#topTabs button").forEach(x =>
     x.setAttribute("aria-selected", String(x.dataset.tab === curTop)));
   const lb = $("#lensbar");
   if (lb){
@@ -1148,6 +1263,7 @@ function showTab(name, opts){
      section with a filter applied, so it is turned into a scope above and the
      section is simply the view's own. */
   const sec = name;
+  if (SECTIONS[name]) showSection(name, opts.section || curSection[name]);
   VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
   restoreLensScroll(name);
@@ -1177,20 +1293,27 @@ async function setScope(s){
    this is the normal order) must not leave the open tab on "connect a folder". */
 function refreshActiveTab(){ tabShownHook(curTab); }
 function goTo(view, opts){
-  const h = hashFor(view);
+  const h = hashFor(view, opts && opts.section);
   if (location.hash.replace(/^#\/?/, "").toLowerCase() !== h) location.hash = h;
   showTab(view, opts);
 }
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+document.querySelectorAll("#topTabs button").forEach(b => b.onclick = () => {
   const t = b.dataset.tab;
   /* Returning to Explore lands on the lens you left it on, not a reset. */
   goTo(t === "explore" ? (LENSES.includes(curTab) ? curTab : "library") : t);
 });
 document.querySelectorAll("#lenses button").forEach(b => b.onclick = () => goTo(b.dataset.lens));
 if ($("#lensScope")) $("#lensScope").onchange = () => setScope($("#lensScope").value);
+for (const tab of Object.keys(SECTIONS)){
+  const rail = $("#" + tab + "Rail");
+  if (rail) rail.querySelectorAll("button").forEach(b =>
+    b.onclick = () => goTo(tab, { section:b.dataset.sec }));
+}
 window.addEventListener("hashchange", () => {
   const r = routeFromHash();
-  if (r && (r.view !== curTab || (r.scope && r.scope !== curScope))) showTab(r.view, r);
+  if (!r) return;
+  if (r.view !== curTab || (r.scope && r.scope !== curScope)
+      || (r.section && r.section !== curSection[r.view])) showTab(r.view, r);
 });
 
 /* ================= browser gate ================= */
@@ -6082,6 +6205,37 @@ enableFolderDrop("btnIndexDir", async h => {
   await refreshPlan();
 });
 
+/* ---- the Scan rail's status ----
+   Which index, which folder, how much is in it, when it last ran. Every one of
+   these was reachable only by scrolling Settings, and not knowing which index
+   was open cost a three-hour face pass written to the wrong disk. */
+function renderScanStatus(){
+  const n = $("#scanStatus");
+  if (!n) return;
+  n.textContent = "";
+  const row = (label, value, bad) => {
+    const d = el("div");
+    d.append(document.createTextNode(label + " "));
+    const b = el("b", bad ? "bad" : null, value);
+    d.append(b); n.append(d);
+  };
+  const where = (S.indexMode === "custom" && S.indexDirHandle)
+    ? S.indexDirHandle.name
+    : (S.dirHandle ? S.dirHandle.name : null);
+  row("Index", where || "not chosen", !where);
+  row("Folder", S.dirHandle ? S.dirHandle.name : "not connected", !S.dirHandle);
+  row("Records", IDX.loaded ? IDX.records.size.toLocaleString() : "\u2013");
+  /* The newest scanned_at in the index. Walking 7,039 records costs under a
+     millisecond and only happens when this tab is shown, which is cheaper than
+     keeping a field in step with every write that could set it. */
+  let newest = "";
+  if (IDX.loaded) for (const r of IDX.records.values())
+    if (r.scanned_at && r.scanned_at > newest) newest = r.scanned_at;
+  const last = newest ? new Date(newest) : null;
+  row("Last scan", last && !isNaN(last)
+    ? last.toLocaleDateString(undefined, { day:"numeric", month:"short" }) : "\u2013");
+}
+
 /* ================= plan UI ================= */
 let planAbort = null;
 async function refreshPlan(){
@@ -6323,10 +6477,9 @@ function updateProgress(){
   $("#progEta").textContent = (RUN.active && avg && left)
     ? "About " + fmtDur(left * avg / conc) + " remaining."
     : (RUN.active ? "Estimating…" : "");
-  /* A face run is started from the People tab, but every element above lives
-     in the Scan tab -- which is hidden at the time. Without this the run gave
-     no sign of life at all on the tab it was launched from, and looked like it
-     had done nothing. */
+  /* A face run now lives in Scan -> Faces, but naming happens in Explore ->
+     People, so the run is routinely started and then left while the person goes
+     back to browsing. Both places have to show it. */
   if (RUN.mode === "faces"){
     const fb = $("#facesBar");
     if (fb) fb.style.width = pct + "%";
@@ -6339,10 +6492,29 @@ function updateProgress(){
     if (fe) fe.textContent = (RUN.active && avg && left)
       ? "About " + fmtDur(left * avg / conc) + " remaining."
       : (RUN.active ? "Estimating…" : "Finished.");
-    /* The error list renders into the Scan tab, which is hidden while this one
-       is open. A run can therefore fail on almost every photo and show nothing
-       but a rising count with no reason -- which is exactly what happened on a
-       6,621-photo pass that failed 1,565 of its first 1,575. */
+    /* Explore -> People is where the names are given, and a long face run is
+       routinely started and then left. One line there beats switching tabs to
+       find out whether anything is still happening. */
+    const mir = $("#peopleRunMirror");
+    if (mir){
+      if (!RUN.active) mir.hidden = true;
+      else {
+        mir.hidden = false; mir.textContent = "";
+        mir.append(el("b", null, "Finding faces \u2014 " + pct + "%. "));
+        mir.append(document.createTextNode(
+          RUN.done.toLocaleString() + " of " + RUN.total.toLocaleString()
+          + (RUN.errorCount ? ", " + RUN.errorCount + " unreadable" : "")
+          + ". Groups appear here as they are found."));
+        const a = el("button", "btn sec");
+        a.textContent = "Show the run";
+        a.style.marginLeft = "10px";
+        a.onclick = () => goTo("scan", { section:"faces" });
+        mir.append(a);
+      }
+    }
+    /* A run can fail on almost every photo and show nothing but a rising
+       count with no reason -- which is exactly what happened on a 6,621-photo
+       pass that failed 1,565 of its first 1,575. */
     const box = $("#facesErr");
     if (box){
       if (!RUN.errors.length) box.hidden = true;
@@ -9667,7 +9839,7 @@ $("#sFaceEmb").onchange = async () => {
 $("#btnRefine").onclick = async () => {
   if (!(await ensureIndexConnected()) || !(await ensureConnected("the improvement pass"))) return;
   if (RUN.active){ toast("Stop the scan first."); return; }
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Improve from originals");
   let p;
   try {
@@ -9721,7 +9893,7 @@ $("#btnRefine").onclick = async () => {
 $("#btnReembed").onclick = async () => {
   if (RUN.active || libraryMaintenance){ toast("Wait for the current library operation."); return; }
   if (!FACES.faces.size){ toast("Press Find faces first."); return; }
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Re-measure faces");
   try {
     const r = await withLibraryMaintenance(() => reembedFromCrops(async m => { await st.note(m); }));
@@ -9733,7 +9905,7 @@ $("#btnReembed").onclick = async () => {
 };
 
 $("#btnCompare").onclick = async () => {
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Compare on your named people");
   try {
     const r = await compareEmbedders(async m => { await st.note(m); });
@@ -9767,7 +9939,7 @@ $("#btnCompare").onclick = async () => {
         : "On your photos the stored vectors separate at least as well. Keeping them "
           + "is reasonable; try strictness " + r.current.suggestedThreshold + "." }));
     }
-    $("#faceOut").append(box);
+    $("#faceScanOut").append(box);
     st.ok("Done — see the table.");
   } catch (e){ st.err(humanError(e)); }
 };
@@ -9837,7 +10009,7 @@ $("#sFaceTh").onchange = async () => {
 $("#btnFaceScan").onclick = async () => {
   if (!(await ensureIndexConnected()) || !(await ensureConnected("the face scan"))) return;
   if (RUN.active){ toast("Stop the scan first."); return; }
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Find faces");
   /* Do not leave "No faces found yet" sitting under a running step: it reads
      as a result rather than a stale label. */
@@ -9927,7 +10099,7 @@ $("#btnFaceWipe").onclick = async () => {
   try {
     await deleteAllFaceData();
     rebuildDerived();
-    $("#faceOut").textContent = "";
+    $("#faceScanOut").textContent = "";
     $("#faceNote").textContent = "All face data deleted.";
     renderPeople();
     toast("Face data deleted.");
@@ -13354,6 +13526,72 @@ async function selfTest(){
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
       eq("the old Search address lands on the grid, where its results are shown",
          tabFromHash("#search"), "library");
+      /* ---- RS-4: Scan is three jobs, not one ---- */
+      {
+        const wasSec = curSection.scan, wasT = curTab;
+        eq("Scan has three sections", SECTIONS.scan.join(","), "photos,faces,maint");
+        showTab("scan");
+        showSection("scan", "faces");
+        ok("choosing a section shows it", $("#scanSec-faces").hidden === false);
+        ok("and hides the others",
+           $("#scanSec-photos").hidden === true && $("#scanSec-maint").hidden === true);
+        ok("with the rail marking it",
+           document.querySelector('#scanRail button[data-sec="faces"]')
+             .getAttribute("aria-selected") === "true");
+        ok("the rail's buttons are not mistaken for the top-level tabs",
+           document.querySelectorAll("#topTabs button").length === TOPS.length,
+           String(document.querySelectorAll("#topTabs button").length));
+        ok("and choosing a section does not deselect Scan above it",
+           document.querySelector('#topTabs button[data-tab="scan"]')
+             .getAttribute("aria-selected") === "true");
+
+        eq("a section has its own address", hashFor("scan", "faces"), "scan/faces");
+        eq("the first section is just the tab", hashFor("scan", "photos"), "scan");
+        eq("and that address resolves back",
+           JSON.stringify(routeFromHash("#scan/faces")),
+           JSON.stringify({ view:"scan", section:"faces" }));
+        eq("an unknown section falls back to the tab",
+           JSON.stringify(routeFromHash("#scan/nonsense")), JSON.stringify({ view:"scan" }));
+
+        /* Arriving by address shows that section. */
+        showTab("scan", routeFromHash("#scan/maint"));
+        ok("an address opens the section it names", $("#scanSec-maint").hidden === false);
+        eq("and the rail remembers it", curSection.scan, "maint");
+
+        /* Leaving and coming back lands where you were, as the lenses do.
+           Hide every pane first: asserting on panes nothing touched would pass
+           whether or not the section is restored. */
+        showTab("settings");
+        for (const sec of SECTIONS.scan) $("#scanSec-" + sec).hidden = true;
+        showTab("scan");
+        ok("returning to Scan lands on the section you left",
+           $("#scanSec-maint").hidden === false, curSection.scan);
+        showSection("scan", "faces");
+
+        /* The controls really moved, rather than being copied. */
+        ok("Find faces lives in Scan",
+           $("#tab-scan").contains($("#btnFaceScan")));
+        ok("so do the model and source pickers",
+           $("#tab-scan").contains($("#sFaceSrc")) && $("#tab-scan").contains($("#sFaceEmb")));
+        ok("grouping strictness stays with the groups it rearranges",
+           $("#tab-people").contains($("#sFaceTh")));
+        ok("and so does Re-group", $("#tab-people").contains($("#btnRecluster")));
+        ok("maintenance left the plan's toolbar",
+           $("#scanSec-maint").contains($("#btnThumbs"))
+           && $("#scanSec-maint").contains($("#btnCompact")));
+        ok("a face run writes its output where the buttons now are",
+           $("#tab-scan").contains($("#faceScanOut")));
+
+        /* The status that decides whether any of this is safe to press. */
+        showSection("scan", "photos");
+        renderScanStatus();
+        const st = $("#scanStatus").textContent;
+        for (const label of ["Index", "Folder", "Records", "Last scan"])
+          ok("the rail says " + label.toLowerCase(), st.includes(label), st);
+
+        showSection("scan", wasSec); showTab(wasT);
+      }
+
       /* Reloading onto the Timeline used to throw the restored search away:
          the rule was "any tab but Library means leave it behind", which was
          right while Search was a destination and wrong once it reaches every
@@ -13413,7 +13651,7 @@ async function selfTest(){
         eq("a fresh install reads originals", m && m[1], "originals");
       }
       eq("every top-level tab has a button", TOPS.length,
-         document.querySelectorAll("nav button").length);
+         document.querySelectorAll("#topTabs button").length);
       eq("every lens has a button", LENSES.length,
          document.querySelectorAll("#lenses button").length);
 
@@ -13433,7 +13671,7 @@ async function selfTest(){
       showTab("scan");
       ok("showing a tab selects it and hides the others",
          $("#tab-scan").hidden === false && $("#tab-chat").hidden === true
-         && document.querySelector('nav button[data-tab="scan"]').getAttribute("aria-selected") === "true");
+         && document.querySelector('#topTabs button[data-tab="scan"]').getAttribute("aria-selected") === "true");
       ok("the lens bar belongs to Explore and is hidden elsewhere", $("#lensbar").hidden === true);
 
       /* The filters panel belongs to the lens bar. Left open it floated over

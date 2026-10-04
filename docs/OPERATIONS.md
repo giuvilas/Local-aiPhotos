@@ -142,7 +142,7 @@ append-only and the last line for an id wins.
 ### Thumbnails are deliberately not backed up
 
 They are 226 MB of the 275 MB index, whereas `records.jsonl` is the only file that cost 68
-hours. Getting thumbnails back is cheap: **Scan tab → Rebuild thumbnails**. It lists what is
+hours. Getting thumbnails back is cheap: **Scan → Maintenance → Rebuild thumbnails**. It lists what is
 already there, works out which photos have no thumbnail, finds those originals in the folder
 you have open, and remakes the missing ones. **No model is involved**; it is a decode and a
 resize, so it runs at disk speed rather than at 21 seconds a photo.
@@ -309,7 +309,7 @@ they are.
 | **Scan scope** | Optional: work through a big library one folder at a time. |
 | **Max tokens** | 2000. Lower values truncate photos containing a lot of text. |
 | **Back up after every scan** | On by default; keeps the last 3. |
-| **Rebuild thumbnails** (Scan tab) | Remakes missing thumbnails from the originals. No model time. |
+| **Rebuild thumbnails** (Scan → Maintenance) | Remakes missing thumbnails from the originals. No model time. |
 
 ### Library: rotating, removing and restoring photos
 

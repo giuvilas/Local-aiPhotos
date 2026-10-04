@@ -268,7 +268,7 @@ $("#sFaceEmb").onchange = async () => {
 $("#btnRefine").onclick = async () => {
   if (!(await ensureIndexConnected()) || !(await ensureConnected("the improvement pass"))) return;
   if (RUN.active){ toast("Stop the scan first."); return; }
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Improve from originals");
   let p;
   try {
@@ -322,7 +322,7 @@ $("#btnRefine").onclick = async () => {
 $("#btnReembed").onclick = async () => {
   if (RUN.active || libraryMaintenance){ toast("Wait for the current library operation."); return; }
   if (!FACES.faces.size){ toast("Press Find faces first."); return; }
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Re-measure faces");
   try {
     const r = await withLibraryMaintenance(() => reembedFromCrops(async m => { await st.note(m); }));
@@ -334,7 +334,7 @@ $("#btnReembed").onclick = async () => {
 };
 
 $("#btnCompare").onclick = async () => {
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Compare on your named people");
   try {
     const r = await compareEmbedders(async m => { await st.note(m); });
@@ -368,7 +368,7 @@ $("#btnCompare").onclick = async () => {
         : "On your photos the stored vectors separate at least as well. Keeping them "
           + "is reasonable; try strictness " + r.current.suggestedThreshold + "." }));
     }
-    $("#faceOut").append(box);
+    $("#faceScanOut").append(box);
     st.ok("Done — see the table.");
   } catch (e){ st.err(humanError(e)); }
 };
@@ -438,7 +438,7 @@ $("#sFaceTh").onchange = async () => {
 $("#btnFaceScan").onclick = async () => {
   if (!(await ensureIndexConnected()) || !(await ensureConnected("the face scan"))) return;
   if (RUN.active){ toast("Stop the scan first."); return; }
-  const host = $("#faceOut"); resetChecks(host);
+  const host = $("#faceScanOut"); resetChecks(host);
   const st = step(host, "Find faces");
   /* Do not leave "No faces found yet" sitting under a running step: it reads
      as a result rather than a stale label. */
@@ -528,7 +528,7 @@ $("#btnFaceWipe").onclick = async () => {
   try {
     await deleteAllFaceData();
     rebuildDerived();
-    $("#faceOut").textContent = "";
+    $("#faceScanOut").textContent = "";
     $("#faceNote").textContent = "All face data deleted.";
     renderPeople();
     toast("Face data deleted.");

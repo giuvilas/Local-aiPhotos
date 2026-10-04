@@ -15,102 +15,144 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
-- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+- [0.6.28 (2026-10-04)](#0628-2026-10-04)
+  - [Changed](#changed)
   - [Fixed](#fixed)
+- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Fixed](#fixed-1)
   - [Removed](#removed)
   - [Documentation](#documentation)
 - [0.6.26 (2026-10-04)](#0626-2026-10-04)
-  - [Changed](#changed)
+  - [Changed](#changed-1)
   - [Added](#added)
   - [Removed](#removed-1)
 - [0.6.25 (2026-10-04)](#0625-2026-10-04)
-  - [Changed](#changed-1)
-  - [Fixed](#fixed-1)
-- [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-2)
   - [Fixed](#fixed-2)
-- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+- [0.6.24 (2026-10-04)](#0624-2026-10-04)
+  - [Changed](#changed-3)
   - [Fixed](#fixed-3)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+  - [Fixed](#fixed-4)
   - [Added](#added-1)
 - [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-2)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
-  - [Fixed](#fixed-4)
-  - [Changed](#changed-3)
-- [0.6.20 (2026-10-02)](#0620-2026-10-02)
+  - [Fixed](#fixed-5)
   - [Changed](#changed-4)
-- [0.6.19 (2026-10-02)](#0619-2026-10-02)
+- [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-5)
+- [0.6.19 (2026-10-02)](#0619-2026-10-02)
+  - [Changed](#changed-6)
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
   - [Added](#added-3)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
-  - [Fixed](#fixed-5)
+  - [Fixed](#fixed-6)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-4)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
-  - [Fixed](#fixed-6)
+  - [Fixed](#fixed-7)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
-  - [Changed](#changed-6)
-- [0.6.13 (2026-10-02)](#0613-2026-10-02)
   - [Changed](#changed-7)
+- [0.6.13 (2026-10-02)](#0613-2026-10-02)
+  - [Changed](#changed-8)
 - [0.6.12 (2026-10-02)](#0612-2026-10-02)
   - [Added](#added-5)
 - [0.6.11 (2026-10-02)](#0611-2026-10-02)
   - [Added](#added-6)
 - [0.6.10 (2026-10-02)](#0610-2026-10-02)
-  - [Changed](#changed-8)
-- [0.6.9 (2026-10-02)](#069-2026-10-02)
   - [Changed](#changed-9)
+- [0.6.9 (2026-10-02)](#069-2026-10-02)
+  - [Changed](#changed-10)
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
   - [Added](#added-7)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
-  - [Fixed](#fixed-7)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-8)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-9)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-8)
 - [0.6.4 (2026-10-02)](#064-2026-10-02)
   - [Added](#added-9)
 - [0.6.3 (2026-10-01)](#063-2026-10-01)
   - [Added](#added-10)
-  - [Changed](#changed-10)
+  - [Changed](#changed-11)
 - [0.6.2 (2026-10-01)](#062-2026-10-01)
   - [Added](#added-11)
-  - [Changed](#changed-11)
+  - [Changed](#changed-12)
 - [0.6.1 (2026-10-01)](#061-2026-10-01)
   - [Added](#added-12)
-  - [Changed](#changed-12)
+  - [Changed](#changed-13)
 - [0.6.0 (2026-10-01)](#060-2026-10-01)
   - [Added](#added-13)
-  - [Changed](#changed-13)
-- [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-14)
+- [0.5.4 (2026-10-01)](#054-2026-10-01)
+  - [Changed](#changed-15)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-9)
+  - [Fixed](#fixed-10)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
   - [Added](#added-14)
-  - [Changed](#changed-15)
-- [0.5.1 (2026-10-01)](#051-2026-10-01)
   - [Changed](#changed-16)
+- [0.5.1 (2026-10-01)](#051-2026-10-01)
+  - [Changed](#changed-17)
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-15)
-  - [Changed](#changed-17)
-  - [Fixed](#fixed-10)
+  - [Changed](#changed-18)
+  - [Fixed](#fixed-11)
 - [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-16)
-  - [Changed](#changed-18)
+  - [Changed](#changed-19)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-17)
-  - [Changed](#changed-19)
-  - [Fixed](#fixed-11)
-- [0.2.0 (2026-09-29)](#020-2026-09-29)
-  - [Added](#added-18)
   - [Changed](#changed-20)
   - [Fixed](#fixed-12)
+- [0.2.0 (2026-09-29)](#020-2026-09-29)
+  - [Added](#added-18)
+  - [Changed](#changed-21)
+  - [Fixed](#fixed-13)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
   - [Added](#added-19)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.28 (2026-10-04)
+
+**Summary:** Scan becomes three jobs behind a rail that finally says which index it is writing
+to (**RS-4**).
+
+### Changed
+
+- **Scan is Photos · Faces · Maintenance**, chosen from a left rail. One tab was carrying three
+  unrelated jobs — describing photos, finding faces, and housekeeping — with ten buttons in a
+  single row.
+- **The rail carries the status**: which index, which folder, how many records, when it last
+  ran, with *not chosen* and *not connected* called out rather than left blank. Every one of
+  these was previously reachable only by scrolling Settings, and not knowing which index was
+  open cost a three-hour face pass written to the wrong disk.
+- **Face scanning moved out of People.** Find faces, Improve from originals, Re-measure,
+  Compare models, Delete all face data and the model and source pickers are now Scan → Faces.
+  Naming, merging and splitting stay in Explore → People: one is a job you start and wait for,
+  the other is browsing, and the People lens used to open with six buttons before a single face.
+- **Grouping strictness and Re-group stay with the groups**, because re-grouping is instant
+  from vectors already on disk — it changes what you are looking at, so it belongs where you
+  are looking.
+- **A face run shows a one-line mirror in People** with a *Show the run* button, since a long
+  pass is routinely started and then left while the names get given.
+- **Rebuild thumbnails** and **Compact log** left the plan's toolbar for Maintenance, and
+  **Back up now**, **Show backups** and **Move the index** moved there from Settings. Settings
+  keeps the backup *preferences* and points at Maintenance for the actions.
+- **Sections have addresses**: `#scan/faces`, `#scan/maint`. The first section is just `#scan`,
+  an unknown section falls back to the tab, and returning to Scan lands on the section you left.
+
+### Fixed
+
+- The top tab bar's styling was written as bare `nav` rules, so the new rail — navigation too —
+  was laid out as a horizontal pill group on top of its own text. Both the CSS and the
+  `nav button` selectors that drive tab selection are scoped to `#topTabs`; without the second
+  fix, choosing a section deselected the Scan tab above it.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.27 (2026-10-04)
 

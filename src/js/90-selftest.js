@@ -2489,6 +2489,72 @@ async function selfTest(){
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
       eq("the old Search address lands on the grid, where its results are shown",
          tabFromHash("#search"), "library");
+      /* ---- RS-4: Scan is three jobs, not one ---- */
+      {
+        const wasSec = curSection.scan, wasT = curTab;
+        eq("Scan has three sections", SECTIONS.scan.join(","), "photos,faces,maint");
+        showTab("scan");
+        showSection("scan", "faces");
+        ok("choosing a section shows it", $("#scanSec-faces").hidden === false);
+        ok("and hides the others",
+           $("#scanSec-photos").hidden === true && $("#scanSec-maint").hidden === true);
+        ok("with the rail marking it",
+           document.querySelector('#scanRail button[data-sec="faces"]')
+             .getAttribute("aria-selected") === "true");
+        ok("the rail's buttons are not mistaken for the top-level tabs",
+           document.querySelectorAll("#topTabs button").length === TOPS.length,
+           String(document.querySelectorAll("#topTabs button").length));
+        ok("and choosing a section does not deselect Scan above it",
+           document.querySelector('#topTabs button[data-tab="scan"]')
+             .getAttribute("aria-selected") === "true");
+
+        eq("a section has its own address", hashFor("scan", "faces"), "scan/faces");
+        eq("the first section is just the tab", hashFor("scan", "photos"), "scan");
+        eq("and that address resolves back",
+           JSON.stringify(routeFromHash("#scan/faces")),
+           JSON.stringify({ view:"scan", section:"faces" }));
+        eq("an unknown section falls back to the tab",
+           JSON.stringify(routeFromHash("#scan/nonsense")), JSON.stringify({ view:"scan" }));
+
+        /* Arriving by address shows that section. */
+        showTab("scan", routeFromHash("#scan/maint"));
+        ok("an address opens the section it names", $("#scanSec-maint").hidden === false);
+        eq("and the rail remembers it", curSection.scan, "maint");
+
+        /* Leaving and coming back lands where you were, as the lenses do.
+           Hide every pane first: asserting on panes nothing touched would pass
+           whether or not the section is restored. */
+        showTab("settings");
+        for (const sec of SECTIONS.scan) $("#scanSec-" + sec).hidden = true;
+        showTab("scan");
+        ok("returning to Scan lands on the section you left",
+           $("#scanSec-maint").hidden === false, curSection.scan);
+        showSection("scan", "faces");
+
+        /* The controls really moved, rather than being copied. */
+        ok("Find faces lives in Scan",
+           $("#tab-scan").contains($("#btnFaceScan")));
+        ok("so do the model and source pickers",
+           $("#tab-scan").contains($("#sFaceSrc")) && $("#tab-scan").contains($("#sFaceEmb")));
+        ok("grouping strictness stays with the groups it rearranges",
+           $("#tab-people").contains($("#sFaceTh")));
+        ok("and so does Re-group", $("#tab-people").contains($("#btnRecluster")));
+        ok("maintenance left the plan's toolbar",
+           $("#scanSec-maint").contains($("#btnThumbs"))
+           && $("#scanSec-maint").contains($("#btnCompact")));
+        ok("a face run writes its output where the buttons now are",
+           $("#tab-scan").contains($("#faceScanOut")));
+
+        /* The status that decides whether any of this is safe to press. */
+        showSection("scan", "photos");
+        renderScanStatus();
+        const st = $("#scanStatus").textContent;
+        for (const label of ["Index", "Folder", "Records", "Last scan"])
+          ok("the rail says " + label.toLowerCase(), st.includes(label), st);
+
+        showSection("scan", wasSec); showTab(wasT);
+      }
+
       /* Reloading onto the Timeline used to throw the restored search away:
          the rule was "any tab but Library means leave it behind", which was
          right while Search was a destination and wrong once it reaches every
@@ -2548,7 +2614,7 @@ async function selfTest(){
         eq("a fresh install reads originals", m && m[1], "originals");
       }
       eq("every top-level tab has a button", TOPS.length,
-         document.querySelectorAll("nav button").length);
+         document.querySelectorAll("#topTabs button").length);
       eq("every lens has a button", LENSES.length,
          document.querySelectorAll("#lenses button").length);
 
@@ -2568,7 +2634,7 @@ async function selfTest(){
       showTab("scan");
       ok("showing a tab selects it and hides the others",
          $("#tab-scan").hidden === false && $("#tab-chat").hidden === true
-         && document.querySelector('nav button[data-tab="scan"]').getAttribute("aria-selected") === "true");
+         && document.querySelector('#topTabs button[data-tab="scan"]').getAttribute("aria-selected") === "true");
       ok("the lens bar belongs to Explore and is hidden elsewhere", $("#lensbar").hidden === true);
 
       /* The filters panel belongs to the lens bar. Left open it floated over

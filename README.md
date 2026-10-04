@@ -178,8 +178,8 @@ in **[docs/SETUP.md](docs/SETUP.md)**.
 | tab | what it is for |
 |---|---|
 | **Explore** | Looking at, finding and organising your photos. Everything that is a *way of looking* is a lens here, so you never have to go somewhere else and start again. |
-| **Scan** | Building and maintaining the index: the plan (what is new, changed, failed or missing), progress, retry, faces, backups, thumbnail rebuild. |
-| **Settings** | Server URL and connection test, model roles, folder and index location, scan and date settings, backups, the self-test. |
+| **Scan** | Building and maintaining the index, in three sections: **Photos** (the plan — what is new, changed, failed or missing — progress and retry), **Faces** (find faces, improve from originals, the model and source pickers) and **Maintenance** (rebuild thumbnails, compact the log, back up, move the index). The rail beside them always shows which index, which folder, how many records and when it last ran. |
+| **Settings** | Server URL and connection test, model roles, folder and index location, scan and date settings, backup preferences, the self-test. |
 
 ### Explore: one set of photos, four lenses
 
