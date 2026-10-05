@@ -202,6 +202,16 @@ the other. This caught an inherited regression: the fork's primary-button label 
 3.65:1 in dark and 4.02:1 in light, exactly the figures the roadmap had recorded and asked not
 to inherit — and the merge had inherited them anyway.
 
+**One guarded path to the folder picker.** `pickDirectoryVisible()` is the only thing in the app
+that calls `showDirectoryPicker()`, and the suite reads the app's own source to keep it that way.
+Chrome allows one file dialog per *document*: a second request while the first is outstanding is
+refused, and from then on every picker on the page is refused for the life of that page. A folder
+on a sleeping share can take tens of seconds to offer, with nothing drawn while it waits, so the
+guard holds the second press rather than passing it on — see
+[FINDINGS §22](FINDINGS.md#22-explaining-a-bad-state-is-not-the-same-as-preventing-it). Dragging
+a folder from Finder onto the button is the route that involves no dialog at all, and is what the
+app points at whenever the dialog is slow.
+
 **⌘K reaches anything by name.** Three tabs can hold eighty controls only if nothing has to be
 hunted for; without the palette, a control behind a section is simply hidden. Commands are built
 **fresh each time it opens**, because what exists depends on the index — the people in it are

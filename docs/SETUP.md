@@ -207,12 +207,30 @@ page. Check the row for your server in [Choosing a server](#choosing-a-server).
 **Every image fails with `model_not_found`.** No scan model is selected. The preflight check
 catches this before a scan starts and names the fix.
 
-**"File picker already active".** Chrome allows one dialog at a time, and on macOS the panel
-process can outlive it:
+**"Choose folder" seems to do nothing.** Usually it is working, slowly. Chrome draws nothing
+while a folder dialog is opening, and a dialog that has to list a **sleeping NAS** waits for the
+share to wake — which on a measured share took 24 seconds just to answer its first request. The
+note under the button counts the seconds.
+
+**Do not press the button again.** Chrome allows one file dialog per document, and a second
+request while the first is outstanding is refused with *"File picker already active"* — after
+which **every** picker on the page is refused for the life of that page. Since v0.6.33 the app
+stops the second press from reaching Chrome, so this is no longer reachable by pressing twice;
+on an older build it was the usual way of getting stuck.
+
+To avoid the dialog entirely, **drag the folder from Finder onto the button**. That hands the
+page a folder directly, with no dialog and nothing to jam. It works on *Choose folder* and on
+*Choose where to save the DB*.
+
+**"File picker already active".** If you do see it: reload the page — folders and settings are
+remembered. On macOS the panel process can also outlive the dialog:
 ```bash
 pkill -9 -f openAndSavePanelService
 ```
 If that finds nothing, quit Chrome entirely; a reload is not always enough.
+
+Why it is permanent until reload, and why guarding the trigger was the only real fix, is in
+[FINDINGS §22](FINDINGS.md#22-explaining-a-bad-state-is-not-the-same-as-preventing-it).
 
 **A button sits on "working…".** If the tab was hidden or occluded, this was a
 `requestAnimationFrame` stall. It is fixed, but reload if you see it on an old build.

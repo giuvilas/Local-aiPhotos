@@ -439,6 +439,13 @@ RAW files (NEF, CR2, ARW, DNG and others) are read through the full-size JPEG pr
 
 ## FAQ
 
+**"Choose folder" does nothing / the chooser is stuck.** It is usually working, slowly: Chrome
+draws nothing while a folder dialog opens, and one that has to list a sleeping NAS waits for the
+share to wake. Give it time — the note under the button counts the seconds — and **do not press
+again**; Chrome allows one dialog per page and refusing a second one jams every picker until you
+reload. The app now holds that second press for you. To skip the dialog altogether, **drag the
+folder from Finder onto the button**.
+
 **Does it upload my photos?** No. Photos are sent only to the model server you configure,
 which is normally on your own machine.
 
