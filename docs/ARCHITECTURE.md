@@ -185,6 +185,22 @@ after the Scan split. The suite now reads each handler's output host **out of th
 source** and checks that the button and the host share a pane, so the rule cannot drift from a
 hand-written table.
 
+**⌘K reaches anything by name.** Three tabs can hold eighty controls only if nothing has to be
+hunted for; without the palette, a control behind a section is simply hidden. Commands are built
+**fresh each time it opens**, because what exists depends on the index — the people in it are
+commands too.
+
+A command that presses a control works out *where that control lives* from the page itself: the
+pane it sits in names the tab and section, so the palette navigates there and then presses it.
+Pressing a button in a closed section would render its output where nobody is looking, which is
+the failure this redesign kept producing. The suite reads every `cmdkPress()` target out of the
+page's own source and checks that each one exists and can be routed to.
+
+Matching is scored rather than filtered: an exact name beats a name that begins with what you
+typed, which beats a whole word, which beats letters merely appearing in order. Typed words that
+match no command still offer a photo search, so the older habit of ⌘K-for-search does not dead
+end — the field itself keeps `/`.
+
 **Chat is a drawer, not a room you leave.** It slides over Explore from the right, and the page
 makes room for it rather than being covered — a fixed panel would otherwise sit on top of its
 own toggle and the footer. Opening and closing is a class, never the `hidden` attribute: an

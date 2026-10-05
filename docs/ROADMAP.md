@@ -410,7 +410,7 @@ wanting it by date means starting again.
 | RS-4 | **Built** (v0.6.28). Scan: Photos · Faces · Maintenance behind a rail that also carries the status — which index, which folder, how many records, when it last ran | 1.5 |
 | RS-5 | **Built** (v0.6.29). Settings: Connection · Library · Scanning · Privacy & data · Diagnostics, behind the same rail | 1.5 |
 | RS-6 | **Built** (v0.6.30). Chat is a drawer over Explore, and an answer's photos land in the grid behind it | 1 |
-| RS-7 | ⌘K command palette | 1 |
+| RS-7 | **Built** (v0.6.31). ⌘K command palette: every control, every section and every named person by name | 1 |
 | RS-8 | Visual pass — **this is MU-01**, applied once across three tabs instead of eight | 2 |
 
 **8.5 days of reorganisation (RS-1…RS-6) plus 3 days of new work.** RS-8 *is* MU-01, so this

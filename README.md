@@ -84,6 +84,7 @@ The current version is shown in the app's footer; the [ChangeLog](ChangeLog.md) 
 - [Using the app](#using-the-app)
   - [Explore: one set of photos, four lenses](#explore-one-set-of-photos-four-lenses)
   - [Searching](#searching)
+  - [⌘K](#k)
   - [Links](#links)
 - [How it works](#how-it-works)
 - [Where your photos and data live](#where-your-photos-and-data-live)
@@ -231,6 +232,14 @@ It also takes plain words and `"exact phrases"` in quotes. And you can type the 
 **Filters** beside the scope dropdown opens the same things as boxes — From and To dates,
 Place, *Recognise names in my search*, *Include meaning-based matches* — with a count beside
 the button so you can always see that filters are set. Clearing the search clears them too.
+
+### ⌘K
+
+`Cmd/Ctrl+K` opens a command palette: start typing and it offers every lens, scope, section and
+action by name — *timeline*, *favourites*, *find faces*, *rebuild thumbnails*, *back up now*,
+*delete all face data* — along with everyone you have named. Pick one and it takes you there and
+does it. Anything that matches no command is offered as a photo search instead. `/` still jumps
+to the search field.
 
 ### Links
 

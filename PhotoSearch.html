@@ -114,6 +114,22 @@ h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.02em}
   transform:translateX(100%);visibility:hidden;
   transition:transform .22s cubic-bezier(.2,.8,.2,1),visibility .22s}
 #chatDrawer.open{transform:translateX(0);visibility:visible}
+.kbd{border:1px solid var(--line);background:var(--panel2);color:var(--dim);border-radius:7px;
+  padding:4px 8px;font-family:var(--mono);font-size:11px;cursor:pointer;white-space:nowrap}
+.kbd:hover{color:var(--text);background:color-mix(in srgb,var(--text) 7%,transparent)}
+#cmdk{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.42);
+  display:flex;justify-content:center;padding-top:13vh}
+.cmdkBox{width:min(560px,92vw);max-height:64vh;background:var(--panel);
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  box-shadow:0 20px 64px rgba(0,0,0,.42);display:flex;flex-direction:column}
+#cmdkInput{border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);
+  padding:15px 18px;font:inherit;font-size:16px;outline:0}
+#cmdkList{list-style:none;margin:0;padding:6px;overflow:auto}
+#cmdkList li{padding:9px 12px;border-radius:8px;cursor:pointer;display:flex;
+  align-items:center;gap:11px;font-size:13.5px}
+#cmdkList li[aria-selected="true"]{background:color-mix(in srgb,var(--accent) 15%,transparent)}
+.cmdkWhere{margin-left:auto;font-size:11.5px;color:var(--dim);font-family:var(--mono)}
+.cmdkEmpty{padding:20px;color:var(--dim);justify-content:center}
 /* The drawer is fixed, so an open one sits ON TOP of whatever is under it --
    including its own toggle at the right of the lens bar, and the footer. Make
    room instead of overlapping: the page keeps all of its controls reachable. */
@@ -504,10 +520,12 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         <span class="sgChips" id="sgChips"></span>
         <input type="search" id="gSearch" placeholder="Search" autocomplete="off" spellcheck="false"
                aria-label="Search photos, people, places and more" aria-controls="sgBox"
-               aria-expanded="false" role="combobox" title="Search  ( / or Ctrl+K ).  Pick several: Mum, then Dad.">
+               aria-expanded="false" role="combobox" title="Search  ( / ).  Pick several: Mum, then Dad.  Cmd/Ctrl+K opens the command palette.">
       </div>
       <div id="sgBox" role="listbox" hidden></div>
     </div>
+    <button class="kbd" id="cmdkBtn" type="button"
+            title="Everything by name (Cmd/Ctrl+K)" aria-label="Commands">&#8984;K</button>
     <label class="switch" title="Mock LM Studio"><input type="checkbox" id="mock"><span class="swt"> Mock LM Studio</span></label>
   </div>
 </header>
@@ -945,6 +963,17 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
   </section>
 </main>
 
+  <!-- Three tabs can hold eighty controls only if anything can be summoned by
+       name. Without this, a control behind a section is simply hidden. -->
+  <div id="cmdk" hidden>
+    <div class="cmdkBox" role="dialog" aria-modal="true" aria-label="Commands">
+      <input id="cmdkInput" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Jump to anything…" aria-controls="cmdkList" role="combobox">
+      <ul id="cmdkList" role="listbox"></ul>
+    </div>
+  </div>
+
+
   <!-- Chat is a drawer, not a room you leave. Its answers land in the grid
        behind it, so closing it keeps the result you can then look through,
        select from, or regroup by date. -->
@@ -1035,7 +1064,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.30";
+const APP_VERSION = "0.6.31";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -11118,16 +11147,184 @@ sgRenderFilters();
   document.addEventListener("mousedown", e => {
     if (SG.open && !e.target.closest(".sgWrap")) sgClose();
   });
-  /* "/" and Ctrl/Cmd+K jump to the field, unless you are already typing. */
+  /* "/" jumps to the field, unless you are already typing. Cmd/Ctrl+K belongs
+     to the command palette, as it does everywhere else that has one; typing a
+     word there that matches no command still offers to search for it, so the
+     older habit does not dead-end. */
   document.addEventListener("keydown", e => {
     const typing = e.target.closest && e.target.closest("input,textarea,select,[contenteditable]");
     const slash = e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey;
-    const k = (e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey);
-    if ((slash || k) && !VW.open){ e.preventDefault(); input.focus(); input.select(); }
+    if (slash && !VW.open){ e.preventDefault(); input.focus(); input.select(); }
   });
 }
 
 sgRenderChips();
+
+/* ==================== 88-palette.js ==================== */
+/* ================= the command palette =================
+   Three tabs can hold eighty controls only if anything can be summoned by
+   name. Without this, hiding a control behind a section is just hiding it.
+
+   Commands are built fresh each time it opens, because what exists depends on
+   the index: the people in it are commands too. */
+
+const CMDK = { items: [], hits: [], sel: 0 };
+
+/* Where a control lives, worked out from the page rather than from a list:
+   a pane id says which tab and section to open before pressing it. */
+function cmdkPaneRoute(id){
+  const n = $("#" + id);
+  const pane = n && n.closest('[id^="scanSec-"], [id^="settingsSec-"], section');
+  if (!pane) return null;
+  const m = /^(scan|settings)Sec-(.+)$/.exec(pane.id);
+  if (m) return { view:m[1], section:m[2] };
+  const t = /^tab-(.+)$/.exec(pane.id);
+  if (!t) return null;
+  if (t[1] === "library") return { view:"library" };
+  return { view:t[1] };
+}
+/* Go to where a control is, then press it. Pressing a button in a section that
+   is not open means its output renders where nobody is looking -- the failure
+   this redesign kept producing. */
+function cmdkPress(id){
+  const r = cmdkPaneRoute(id);
+  if (r) goTo(r.view, { section:r.section });
+  const n = $("#" + id);
+  if (!n) return;
+  setTimeout(() => { if (!n.disabled) n.click(); }, 0);
+}
+
+function cmdkCommands(){
+  const out = [];
+  const add = (label, where, run, keywords) =>
+    out.push({ label, where, run, keywords: (keywords || "") + " " + label });
+
+  add("Grid", "Explore", () => goTo("library"), "photos library all");
+  add("Timeline", "Explore", () => goTo("timeline"), "dates days by date");
+  add("People", "Explore", () => goTo("people"), "faces names groups");
+  add("Favourites", "Explore", () => { goTo("library"); setScope("favourites"); }, "hearts starred");
+  add("All photos", "Explore", () => { goTo("library"); setScope("all"); }, "everything");
+  add("Removed photos", "Explore", () => { goTo("library"); setScope("removed"); }, "hidden trash deleted");
+  add("Chat", "Explore", () => { goTo("library"); setChatOpen(true); }, "ask question agent");
+  add("Search filters", "Explore", () => {
+    goTo("library");
+    if ($("#sgMore").hidden) $("#sgMoreBtn").click();
+  }, "date place exclude");
+  add("Clear the search", "Explore", () => { goTo("library"); clearSearch(); }, "reset");
+
+  add("Scan new & changed", "Scan", () => cmdkPress("btnScan"), "index run");
+  add("Refresh plan", "Scan", () => cmdkPress("btnPlan"), "what would change");
+  add("Find faces", "Scan", () => cmdkPress("btnFaceScan"), "recognise people");
+  add("Improve faces from originals", "Scan", () => cmdkPress("btnRefine"), "accuracy refine");
+  add("Rebuild thumbnails", "Scan", () => cmdkPress("btnThumbs"), "repair missing");
+  add("Compact log", "Scan", () => cmdkPress("btnCompact"), "shrink records");
+  add("Back up now", "Scan", () => cmdkPress("btnBackup"), "copy safety");
+  add("Show backups", "Scan", () => cmdkPress("btnBackups"), "restore");
+  add("Move the index", "Scan", () => cmdkPress("btnIndexMove"), "relocate nas disk");
+
+  add("Choose photo folder", "Settings", () => cmdkPress("btnPick"), "library pick");
+  add("Choose where to save the index", "Settings", () => cmdkPress("btnIndexDir"), "db location");
+  add("Model roles", "Settings", () => goTo("settings", { section:"conn" }), "vision embedding chat");
+  add("Scan settings", "Settings", () => goTo("settings", { section:"scanning" }), "concurrency tokens dates");
+  add("Privacy & data", "Settings", () => goTo("settings", { section:"privacy" }), "faces stored backups");
+  add("Delete all face data", "Settings", () => cmdkPress("btnPrivacyWipe"), "wipe erase forget");
+  add("Run self-test", "Settings", () => cmdkPress("btnSelfTest"), "diagnostics check");
+
+  /* The people in the index are commands too: their names are the words most
+     likely to be typed here. */
+  for (const p of (FACES.people || [])){
+    if (!p.name) continue;
+    add(p.name, "Person", () => {
+      GAL.chips = [{ kind:"person", id:p.id, label:p.name }];
+      GAL.texts = [];
+      if (typeof sgRenderChips === "function") sgRenderChips();
+      runSearch();
+    }, "person who face");
+  }
+  return out;
+}
+
+/* Subsequence matching, scored so that an exact name beats a word beginning,
+   which beats letters merely appearing in order. */
+function cmdkScore(item, q){
+  if (!q) return 1;
+  const hay = item.keywords.toLowerCase(), label = item.label.toLowerCase();
+  if (label === q) return 1000;
+  if (label.startsWith(q)) return 800 - label.length;
+  const words = hay.split(/\s+/);
+  if (words.some(w => w.startsWith(q))) return 600 - label.length;
+  if (hay.includes(q)) return 400 - label.length;
+  let i = 0;
+  for (const ch of hay){ if (ch === q[i]) i++; if (i === q.length) return 200 - label.length; }
+  return 0;
+}
+
+function cmdkRender(){
+  const q = $("#cmdkInput").value.trim().toLowerCase();
+  CMDK.hits = CMDK.items
+    .map(it => ({ it, s: cmdkScore(it, q) }))
+    .filter(x => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 40)
+    .map(x => x.it);
+  /* Typed words that match no command are still a photo search: the field used
+     to own Cmd+K, so arriving here with a search in mind must not dead-end. */
+  if (q && !CMDK.hits.some(h => h.where === "Person"))
+    CMDK.hits.push({ label: "Search photos for “" + $("#cmdkInput").value.trim() + "”",
+      where: "Search", run: () => {
+        GAL.chips = []; GAL.texts = [$("#cmdkInput").value.trim()];
+        if (typeof sgRenderChips === "function") sgRenderChips();
+        runSearch();
+      } });
+  if (CMDK.sel >= CMDK.hits.length) CMDK.sel = 0;
+  const ul = $("#cmdkList");
+  ul.textContent = "";
+  if (!CMDK.hits.length){
+    ul.append(Object.assign(el("li", "cmdkEmpty"), { textContent:"Nothing matches that." }));
+    return;
+  }
+  CMDK.hits.forEach((h, i) => {
+    const li = el("li");
+    li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", String(i === CMDK.sel));
+    li.append(document.createTextNode(h.label));
+    li.append(Object.assign(el("span", "cmdkWhere"), { textContent:h.where }));
+    li.onmouseenter = () => { CMDK.sel = i; cmdkRender(); };
+    li.onclick = () => cmdkRun(i);
+    ul.append(li);
+  });
+}
+function cmdkRun(i){
+  const h = CMDK.hits[i];
+  cmdkClose();
+  if (h) try { h.run(); } catch (e){ toast(humanError(e)); }
+}
+function cmdkOpen(){
+  CMDK.items = cmdkCommands();
+  CMDK.sel = 0;
+  $("#cmdkInput").value = "";
+  $("#cmdk").hidden = false;
+  cmdkRender();
+  $("#cmdkInput").focus();
+}
+function cmdkClose(){ $("#cmdk").hidden = true; }
+function cmdkIsOpen(){ return $("#cmdk") && !$("#cmdk").hidden; }
+
+$("#cmdkInput").oninput = () => { CMDK.sel = 0; cmdkRender(); };
+$("#cmdk").onclick = e => { if (e.target.id === "cmdk") cmdkClose(); };
+$("#cmdkBtn").onclick = cmdkOpen;
+document.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")){
+    e.preventDefault();
+    cmdkIsOpen() ? cmdkClose() : cmdkOpen();
+    return;
+  }
+  if (!cmdkIsOpen()) return;
+  if (e.key === "Escape"){ e.preventDefault(); cmdkClose(); }
+  else if (e.key === "ArrowDown"){ e.preventDefault(); CMDK.sel = Math.min(CMDK.sel + 1, CMDK.hits.length - 1); cmdkRender(); }
+  else if (e.key === "ArrowUp"){ e.preventDefault(); CMDK.sel = Math.max(CMDK.sel - 1, 0); cmdkRender(); }
+  else if (e.key === "Enter"){ e.preventDefault(); cmdkRun(CMDK.sel); }
+});
 
 /* ==================== 89-restore.js ==================== */
 /* ================= survive a refresh =================
@@ -13755,6 +13952,88 @@ async function selfTest(){
         ok("the check found the controls to check", checked.length >= 12,
            checked.length + " of " + buttons.length);
         eq("every control writes somewhere it can be seen from", wrong.join(", "), "");
+      }
+
+      /* ---- RS-7: anything by name ----
+         Three tabs hold eighty controls only if the palette can reach them.
+         A command that names a control nothing can press, or that presses it
+         while its section is closed, is worse than no command at all. */
+      {
+        const wasT = curTab, wasScope = curScope, wasScan = curSection.scan;
+        cmdkClose();
+        ok("the palette starts closed", !cmdkIsOpen());
+        cmdkOpen();
+        ok("and opens", cmdkIsOpen());
+        ok("offering everything with no query typed", CMDK.hits.length > 15,
+           String(CMDK.hits.length));
+
+        /* Every command must point at something real. */
+        const named = CMDK.items.filter(c => c.where !== "Person");
+        ok("there are commands for all three tabs",
+           new Set(named.map(c => c.where)).size === 3,
+           [...new Set(named.map(c => c.where))].join(","));
+
+        /* The ones that press a control must press one that exists, and must
+           open the section it lives in first -- otherwise the output renders
+           where nobody is looking, which is the failure this whole redesign
+           kept producing. */
+        const src = (document.querySelector("script:not([src])") || {}).textContent || "";
+        const pressed = [...src.matchAll(/cmdkPress\("([A-Za-z0-9_-]+)"\)/g)].map(m => m[1]);
+        ok("the palette presses real controls", pressed.length > 6, String(pressed.length));
+        eq("and every one of them exists",
+           pressed.filter(id => !$("#" + id)).join(","), "");
+        eq("and every one of them can be routed to",
+           pressed.filter(id => !cmdkPaneRoute(id)).join(","), "");
+
+        /* Ranking, on the scorer itself: the integration checks above cannot
+           tell a real ordering from registration order, because the commands
+           happen not to collide. */
+        {
+          const mk = (label, kw) => ({ label, keywords: kw + " " + label });
+          const exact = mk("Timeline", "dates days");
+          const contains = mk("Delete all face data", "wipe erase forget timeline");
+          ok("an exact name beats a command that merely mentions it",
+             cmdkScore(exact, "timeline") > cmdkScore(contains, "timeline"),
+             cmdkScore(exact, "timeline") + " vs " + cmdkScore(contains, "timeline"));
+          const starts = mk("Scan new & changed", "index run");
+          const inside = mk("Rebuild thumbnails", "repair rescan");
+          ok("a name that starts with what you typed beats one that only contains it",
+             cmdkScore(starts, "scan") > cmdkScore(inside, "scan"),
+             cmdkScore(starts, "scan") + " vs " + cmdkScore(inside, "scan"));
+          const word = mk("Improve faces from originals", "accuracy refine");
+          const letters = mk("Choose where to save the index", "db location");
+          ok("a whole word beats letters that merely appear in order",
+             cmdkScore(word, "refine") > cmdkScore(letters, "refine"),
+             cmdkScore(word, "refine") + " vs " + cmdkScore(letters, "refine"));
+          eq("and something that does not match at all scores nothing",
+             cmdkScore(exact, "qqzz"), 0);
+        }
+
+        /* Typing narrows, and an exact name wins over a longer match. */
+        $("#cmdkInput").value = "timeline"; cmdkRender();
+        eq("typing a name puts it first", (CMDK.hits[0] || {}).label, "Timeline");
+        $("#cmdkInput").value = "thumb"; cmdkRender();
+        eq("a word inside a command finds it",
+           (CMDK.hits[0] || {}).label, "Rebuild thumbnails");
+        $("#cmdkInput").value = "zzqq"; cmdkRender();
+        eq("words that match nothing still offer a photo search",
+           (CMDK.hits[CMDK.hits.length - 1] || {}).where || "(nothing offered)", "Search");
+
+        /* Running one actually goes there. */
+        $("#cmdkInput").value = "maintenance"; cmdkRender();
+        $("#cmdkInput").value = "compact"; cmdkRender();
+        const i = CMDK.hits.findIndex(h => h.label === "Compact log");
+        ok("the command is offered", i >= 0);
+        cmdkRun(i);
+        await new Promise(r => setTimeout(r, 20));
+        ok("running it closes the palette", !cmdkIsOpen());
+        eq("and lands in the section that control lives in", curSection.scan, "maint");
+        eq("on the right tab", curTab, "scan");
+
+        /* Running a command moved the Scan rail; leaving it there changes what
+           hashFor("scan") publishes for everything after this. */
+        showSection("scan", wasScan);
+        curScope = wasScope; showTab(wasT); cmdkClose();
       }
 
       /* ---- RS-6: Chat is a drawer, not a room you leave ----

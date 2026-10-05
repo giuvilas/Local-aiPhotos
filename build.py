@@ -38,6 +38,7 @@ ORDER = [
     "86-peopleui.js", # the People tab
     "87-chatui.js",   # chat rendering, lightbox
     "88-search.js",   # the search field: suggestions, chips, filters, results in the grid
+    "88-palette.js",  # the command palette: anything by name
     "89-restore.js",  # keeps the chat and Library view across a page refresh
     "90-selftest.js", # in-browser test suite
     "91-consumer-selftest.js", # people corrections, direct retrieval, face recovery

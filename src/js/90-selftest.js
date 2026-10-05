@@ -2527,6 +2527,88 @@ async function selfTest(){
         eq("every control writes somewhere it can be seen from", wrong.join(", "), "");
       }
 
+      /* ---- RS-7: anything by name ----
+         Three tabs hold eighty controls only if the palette can reach them.
+         A command that names a control nothing can press, or that presses it
+         while its section is closed, is worse than no command at all. */
+      {
+        const wasT = curTab, wasScope = curScope, wasScan = curSection.scan;
+        cmdkClose();
+        ok("the palette starts closed", !cmdkIsOpen());
+        cmdkOpen();
+        ok("and opens", cmdkIsOpen());
+        ok("offering everything with no query typed", CMDK.hits.length > 15,
+           String(CMDK.hits.length));
+
+        /* Every command must point at something real. */
+        const named = CMDK.items.filter(c => c.where !== "Person");
+        ok("there are commands for all three tabs",
+           new Set(named.map(c => c.where)).size === 3,
+           [...new Set(named.map(c => c.where))].join(","));
+
+        /* The ones that press a control must press one that exists, and must
+           open the section it lives in first -- otherwise the output renders
+           where nobody is looking, which is the failure this whole redesign
+           kept producing. */
+        const src = (document.querySelector("script:not([src])") || {}).textContent || "";
+        const pressed = [...src.matchAll(/cmdkPress\("([A-Za-z0-9_-]+)"\)/g)].map(m => m[1]);
+        ok("the palette presses real controls", pressed.length > 6, String(pressed.length));
+        eq("and every one of them exists",
+           pressed.filter(id => !$("#" + id)).join(","), "");
+        eq("and every one of them can be routed to",
+           pressed.filter(id => !cmdkPaneRoute(id)).join(","), "");
+
+        /* Ranking, on the scorer itself: the integration checks above cannot
+           tell a real ordering from registration order, because the commands
+           happen not to collide. */
+        {
+          const mk = (label, kw) => ({ label, keywords: kw + " " + label });
+          const exact = mk("Timeline", "dates days");
+          const contains = mk("Delete all face data", "wipe erase forget timeline");
+          ok("an exact name beats a command that merely mentions it",
+             cmdkScore(exact, "timeline") > cmdkScore(contains, "timeline"),
+             cmdkScore(exact, "timeline") + " vs " + cmdkScore(contains, "timeline"));
+          const starts = mk("Scan new & changed", "index run");
+          const inside = mk("Rebuild thumbnails", "repair rescan");
+          ok("a name that starts with what you typed beats one that only contains it",
+             cmdkScore(starts, "scan") > cmdkScore(inside, "scan"),
+             cmdkScore(starts, "scan") + " vs " + cmdkScore(inside, "scan"));
+          const word = mk("Improve faces from originals", "accuracy refine");
+          const letters = mk("Choose where to save the index", "db location");
+          ok("a whole word beats letters that merely appear in order",
+             cmdkScore(word, "refine") > cmdkScore(letters, "refine"),
+             cmdkScore(word, "refine") + " vs " + cmdkScore(letters, "refine"));
+          eq("and something that does not match at all scores nothing",
+             cmdkScore(exact, "qqzz"), 0);
+        }
+
+        /* Typing narrows, and an exact name wins over a longer match. */
+        $("#cmdkInput").value = "timeline"; cmdkRender();
+        eq("typing a name puts it first", (CMDK.hits[0] || {}).label, "Timeline");
+        $("#cmdkInput").value = "thumb"; cmdkRender();
+        eq("a word inside a command finds it",
+           (CMDK.hits[0] || {}).label, "Rebuild thumbnails");
+        $("#cmdkInput").value = "zzqq"; cmdkRender();
+        eq("words that match nothing still offer a photo search",
+           (CMDK.hits[CMDK.hits.length - 1] || {}).where || "(nothing offered)", "Search");
+
+        /* Running one actually goes there. */
+        $("#cmdkInput").value = "maintenance"; cmdkRender();
+        $("#cmdkInput").value = "compact"; cmdkRender();
+        const i = CMDK.hits.findIndex(h => h.label === "Compact log");
+        ok("the command is offered", i >= 0);
+        cmdkRun(i);
+        await new Promise(r => setTimeout(r, 20));
+        ok("running it closes the palette", !cmdkIsOpen());
+        eq("and lands in the section that control lives in", curSection.scan, "maint");
+        eq("on the right tab", curTab, "scan");
+
+        /* Running a command moved the Scan rail; leaving it there changes what
+           hashFor("scan") publishes for everything after this. */
+        showSection("scan", wasScan);
+        curScope = wasScope; showTab(wasT); cmdkClose();
+      }
+
       /* ---- RS-6: Chat is a drawer, not a room you leave ----
          An answer's photos used to be trapped in the bubble: the only way to
          work with them was to ask for them again somewhere else. */

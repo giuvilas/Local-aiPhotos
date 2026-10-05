@@ -474,12 +474,14 @@ sgRenderFilters();
   document.addEventListener("mousedown", e => {
     if (SG.open && !e.target.closest(".sgWrap")) sgClose();
   });
-  /* "/" and Ctrl/Cmd+K jump to the field, unless you are already typing. */
+  /* "/" jumps to the field, unless you are already typing. Cmd/Ctrl+K belongs
+     to the command palette, as it does everywhere else that has one; typing a
+     word there that matches no command still offers to search for it, so the
+     older habit does not dead-end. */
   document.addEventListener("keydown", e => {
     const typing = e.target.closest && e.target.closest("input,textarea,select,[contenteditable]");
     const slash = e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey;
-    const k = (e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey);
-    if ((slash || k) && !VW.open){ e.preventDefault(); input.focus(); input.select(); }
+    if (slash && !VW.open){ e.preventDefault(); input.focus(); input.select(); }
   });
 }
 
