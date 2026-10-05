@@ -15,16 +15,18 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
-- [0.6.35 (2026-10-05)](#0635-2026-10-05)
+- [0.6.36 (2026-10-05)](#0636-2026-10-05)
   - [Fixed](#fixed)
-- [0.6.34 (2026-10-05)](#0634-2026-10-05)
+- [0.6.35 (2026-10-05)](#0635-2026-10-05)
   - [Fixed](#fixed-1)
+- [0.6.34 (2026-10-05)](#0634-2026-10-05)
+  - [Fixed](#fixed-2)
   - [Changed](#changed)
 - [0.6.33 (2026-10-05)](#0633-2026-10-05)
-  - [Fixed](#fixed-2)
+  - [Fixed](#fixed-3)
 - [0.6.32 (2026-10-05)](#0632-2026-10-05)
   - [Changed](#changed-1)
-  - [Fixed](#fixed-3)
+  - [Fixed](#fixed-4)
   - [Added](#added)
   - [Milestone](#milestone)
 - [0.6.31 (2026-10-05)](#0631-2026-10-05)
@@ -32,16 +34,16 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
   - [Changed](#changed-2)
 - [0.6.30 (2026-10-05)](#0630-2026-10-05)
   - [Changed](#changed-3)
-  - [Fixed](#fixed-4)
+  - [Fixed](#fixed-5)
 - [0.6.29 (2026-10-05)](#0629-2026-10-05)
   - [Changed](#changed-4)
-  - [Fixed](#fixed-5)
+  - [Fixed](#fixed-6)
   - [Added](#added-2)
 - [0.6.28 (2026-10-04)](#0628-2026-10-04)
   - [Changed](#changed-5)
-  - [Fixed](#fixed-6)
-- [0.6.27 (2026-10-04)](#0627-2026-10-04)
   - [Fixed](#fixed-7)
+- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Fixed](#fixed-8)
   - [Removed](#removed)
   - [Documentation](#documentation)
 - [0.6.26 (2026-10-04)](#0626-2026-10-04)
@@ -50,17 +52,17 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
   - [Removed](#removed-1)
 - [0.6.25 (2026-10-04)](#0625-2026-10-04)
   - [Changed](#changed-7)
-  - [Fixed](#fixed-8)
+  - [Fixed](#fixed-9)
 - [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-8)
-  - [Fixed](#fixed-9)
-- [0.6.23 (2026-10-04)](#0623-2026-10-04)
   - [Fixed](#fixed-10)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+  - [Fixed](#fixed-11)
   - [Added](#added-4)
 - [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-5)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
-  - [Fixed](#fixed-11)
+  - [Fixed](#fixed-12)
   - [Changed](#changed-9)
 - [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-10)
@@ -69,11 +71,11 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
   - [Added](#added-6)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
-  - [Fixed](#fixed-12)
+  - [Fixed](#fixed-13)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-7)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
-  - [Fixed](#fixed-13)
+  - [Fixed](#fixed-14)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
   - [Changed](#changed-12)
 - [0.6.13 (2026-10-02)](#0613-2026-10-02)
@@ -89,9 +91,9 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
   - [Added](#added-10)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
-  - [Fixed](#fixed-14)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-15)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-16)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-11)
 - [0.6.4 (2026-10-02)](#064-2026-10-02)
@@ -111,7 +113,7 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-20)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-16)
+  - [Fixed](#fixed-17)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
   - [Added](#added-17)
   - [Changed](#changed-21)
@@ -120,22 +122,53 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-18)
   - [Changed](#changed-23)
-  - [Fixed](#fixed-17)
+  - [Fixed](#fixed-18)
 - [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-19)
   - [Changed](#changed-24)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-20)
   - [Changed](#changed-25)
-  - [Fixed](#fixed-18)
+  - [Fixed](#fixed-19)
 - [0.2.0 (2026-09-29)](#020-2026-09-29)
   - [Added](#added-21)
   - [Changed](#changed-26)
-  - [Fixed](#fixed-19)
+  - [Fixed](#fixed-20)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
   - [Added](#added-22)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.36 (2026-10-05)
+
+**Summary:** six defects in 0.6.35's empty-grid message, found by review. The message was right
+about which folder and wrong about almost everything else.
+
+### Fixed
+
+- **A scan no longer leaves the "wrong folder" message behind.** `IDX.hasLog` was set only by
+  `loadRecords`, and nothing reloads records after a scan — so scanning a new index location
+  wrote `records.jsonl` and then went on reporting that the folder had no records file. Writing
+  the log sets it.
+- **A read that FAILS is no longer reported as an empty index.** The `catch` took every error —
+  a dropped permission, a share that went away, `IDX.dir` being null — as "there is no records
+  file here", cleared memory, and told the user they had picked the wrong folder about an index
+  that was fine. Only `NotFoundError` means empty; anything else is raised.
+- **An empty scope is not an empty index.** Favourites or Removed with nothing in them put the
+  record count at zero while the library is full, so the Grid, the Timeline and a cleared search
+  all announced *"Nothing indexed yet in X/.photoindex/"* over 7,000 photos. Each now says what
+  the scope is, and the index message is reached only when the index really is empty.
+- **"Not looked yet" is no longer stated as "no records file".** `IDX.hasLog` was undefined until
+  the first read, which is not `false`, so the palette's *Clear the search* — synchronous, before
+  the index has opened — accused a folder nothing had read. It starts `null`, and an unknown
+  state gets the plain message.
+- **One rule for which folder the index is in.** The same expression existed in five places and
+  had drifted: the empty-grid message named the **photo** folder as the index folder in custom
+  mode with no handle, while Settings correctly said there was no index location at all. They
+  share `indexWhereName()`, built on the rule `indexParent()` uses.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.35 (2026-10-05)
 

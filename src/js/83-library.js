@@ -421,13 +421,25 @@ let libJob = null;
    held a record file at all: picking an index location that has no
    .photoindex in it creates an empty one, which then reports exactly the same
    thing as a library waiting for its first scan. */
-function indexWhereName(){
-  return (S.indexMode === "custom" && S.indexDirHandle) ? S.indexDirHandle.name
-       : (S.dirHandle ? S.dirHandle.name : null);
+/* Why the grid is empty, which is three different situations needing three
+   different answers: an index with nothing in it, a folder that holds no index
+   at all, and a scope with nothing in it over a full library. Only the first
+   two are about the index. */
+function emptyGridNote(){
+  if (IDX.records.size){
+    if (GAL.view === "removed") return "Nothing removed. Photos you remove are hidden from "
+      + "search and from the Library, and are never deleted.";
+    if (GAL.view === "favourites") return "No favourites yet. Click the heart on a photo, "
+      + "or select photos and press Favourite.";
+    return "";
+  }
+  return emptyIndexNote();
 }
 function emptyIndexNote(){
   const where = indexWhereName();
-  if (!where) return "Nothing indexed yet — run a scan first.";
+  /* hasLog is null until an index has actually been read: "no record file" and
+     "not looked yet" are different claims, and only one accuses a folder. */
+  if (!where || IDX.hasLog == null) return "Nothing indexed yet — run a scan first.";
   if (IDX.hasLog === false)
     return "No index in " + where + "/.photoindex/ — it has no records file, so this is "
          + "either a new location or not the folder you meant. Check “Where to save the "
@@ -453,7 +465,7 @@ async function libLoad(force){
     galBuild();
     GAL.built = IDX.records.size;
     galMessage(GAL.list.length ? "" : (GAL.view === "search" ? "No photos match this search."
-                                                              : emptyIndexNote()));
+                                                              : emptyGridNote()));
     galBar();
     GAL.cell = 0;                       // a fresh list has no scroll anchor
     galClear();

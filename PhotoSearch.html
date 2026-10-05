@@ -1083,7 +1083,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.35";
+const APP_VERSION = "0.6.36";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -2956,7 +2956,10 @@ const IDX = {
   dir:null, thumbs:null,
   records:new Map(),          // light records only: raw JSON + embeddings live on disk
   vec:{ dim:0, ids:[], rows:null, index:new Map() },
-  loaded:false, checkpoint:null, lastConfig:null
+  loaded:false, checkpoint:null, lastConfig:null,
+  /* null until an index has been read: "no record file" and "not looked
+     yet" are different answers, and only one of them means a wrong folder. */
+  hasLog:null
 };
 let libraryMaintenance = 0;
 async function withLibraryMaintenance(fn){
@@ -3019,6 +3022,15 @@ async function readTextIfAny(dir, name){
 
 /* The index is a .photoindex folder either beside the photos or inside a
    separate folder the user picked. One index folder describes one library. */
+/* The name of the folder the index lives in, by the same rule indexParent uses
+   to find it -- custom mode with no handle has NO index folder, rather than
+   quietly meaning the photo folder. Five copies of this expression had drifted
+   apart, and the one in the empty-grid message named the photo folder while
+   Settings said there was no index location at all. */
+function indexWhereName(){
+  if (S.indexMode === "custom") return S.indexDirHandle ? S.indexDirHandle.name : null;
+  return S.dirHandle ? S.dirHandle.name : null;
+}
 async function indexParent(){
   if (S.indexMode === "custom"){
     if (!S.indexDirHandle) throw new Error("No index folder chosen. Pick one in Settings.");
@@ -3114,6 +3126,10 @@ async function ensureIndex(onPhase, opts){
 /* records.jsonl is append-only; the last line for an id wins. */
 async function appendLines(name, lines){
   if (!lines.length) return;
+  /* Writing the log is what makes an index non-empty. Nothing reloads records
+     after a scan, so without this the "no record file" message survives the
+     scan that created the file it is complaining about. */
+  if (name === "records.jsonl") IDX.hasLog = true;
   return exclusive(async () => {
     const fh = await IDX.dir.getFileHandle(name, { create:true });
     const size = (await fh.getFile()).size;
@@ -3142,7 +3158,12 @@ async function loadRecords(onProgress){
   const built = new Map();
   let fh;
   try { fh = await IDX.dir.getFileHandle("records.jsonl"); }
-  catch {
+  catch (e){
+    /* ONLY a missing file means an empty index. A dropped permission, a share
+       that went away, or IDX.dir being null all land here too, and treating
+       them as "this index is empty" clears memory and then tells the user they
+       picked the wrong folder -- about an index that is perfectly fine. */
+    if (!isNotFound(e)) throw e;
     /* No log here means this index is EMPTY, not "keep whatever was loaded
        before". Switching index location used to leave the previous location's
        records in memory, so the new index planned against photos it had never
@@ -5217,9 +5238,7 @@ async function preflightScan(){
      folder B silently created an empty index there and never asked. */
   const freshIndex = IDX.records.size === 0;
   if ((!S.indexChosen || freshIndex) && !$("#mock").checked){
-    const where = S.indexMode === "custom" && S.indexDirHandle
-      ? S.indexDirHandle.name
-      : (S.dirHandle ? S.dirHandle.name : "the photo folder");
+    const where = indexWhereName() || "the photo folder";
     const existing = IDX.records.size;
     const ok = confirm(
       "Where should the index be saved?\n\n"
@@ -5690,9 +5709,7 @@ async function planFaceScan(onPhase, signal){
      still on the share, both holding identical content, there was no way to tell
      from the outside which one a run had opened -- and a failure reading
      config.json looks the same either way. */
-  const where = (S.indexMode === "custom" && S.indexDirHandle)
-    ? S.indexDirHandle.name
-    : (S.dirHandle ? S.dirHandle.name : "?");
+  const where = indexWhereName() || "?";
   await say("Opening the index in " + where + "/.photoindex/…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
     { onPhase: say, timeoutMs: ioCeiling() });
@@ -6404,9 +6421,7 @@ function renderScanStatus(){
     const b = el("b", bad ? "bad" : null, value);
     d.append(b); n.append(d);
   };
-  const where = (S.indexMode === "custom" && S.indexDirHandle)
-    ? S.indexDirHandle.name
-    : (S.dirHandle ? S.dirHandle.name : null);
+  const where = indexWhereName();
   row("Index", where || "not chosen", !where);
   row("Folder", S.dirHandle ? S.dirHandle.name : "not connected", !S.dirHandle);
   row("Records", IDX.loaded ? IDX.records.size.toLocaleString() : "\u2013");
@@ -7706,9 +7721,11 @@ function renderTimeline(){
   const body = $("#tlBody");
   body.textContent = "";
   if (!TL.days.length){
+    /* TL.total counts what the SCOPE let through, so it is zero for an empty
+       Favourites over a full library -- which is not an empty index. */
     body.append(Object.assign(el("span", "dim"), { textContent: TL.total
       ? "No photos carry a date yet."
-      : emptyIndexNote() }));
+      : emptyGridNote() }));
     renderTimelineBar();
     return;
   }
@@ -8194,13 +8211,25 @@ let libJob = null;
    held a record file at all: picking an index location that has no
    .photoindex in it creates an empty one, which then reports exactly the same
    thing as a library waiting for its first scan. */
-function indexWhereName(){
-  return (S.indexMode === "custom" && S.indexDirHandle) ? S.indexDirHandle.name
-       : (S.dirHandle ? S.dirHandle.name : null);
+/* Why the grid is empty, which is three different situations needing three
+   different answers: an index with nothing in it, a folder that holds no index
+   at all, and a scope with nothing in it over a full library. Only the first
+   two are about the index. */
+function emptyGridNote(){
+  if (IDX.records.size){
+    if (GAL.view === "removed") return "Nothing removed. Photos you remove are hidden from "
+      + "search and from the Library, and are never deleted.";
+    if (GAL.view === "favourites") return "No favourites yet. Click the heart on a photo, "
+      + "or select photos and press Favourite.";
+    return "";
+  }
+  return emptyIndexNote();
 }
 function emptyIndexNote(){
   const where = indexWhereName();
-  if (!where) return "Nothing indexed yet — run a scan first.";
+  /* hasLog is null until an index has actually been read: "no record file" and
+     "not looked yet" are different claims, and only one accuses a folder. */
+  if (!where || IDX.hasLog == null) return "Nothing indexed yet — run a scan first.";
   if (IDX.hasLog === false)
     return "No index in " + where + "/.photoindex/ — it has no records file, so this is "
          + "either a new location or not the folder you meant. Check “Where to save the "
@@ -8226,7 +8255,7 @@ async function libLoad(force){
     galBuild();
     GAL.built = IDX.records.size;
     galMessage(GAL.list.length ? "" : (GAL.view === "search" ? "No photos match this search."
-                                                              : emptyIndexNote()));
+                                                              : emptyGridNote()));
     galBar();
     GAL.cell = 0;                       // a fresh list has no scroll anchor
     galClear();
@@ -11140,7 +11169,7 @@ function clearSearch(){
   }
   if (GAL.view === "search") GAL.view = "all";
   galBuild(); galBar(); galClear(); galLayout();
-  galMessage(GAL.list.length ? "" : emptyIndexNote());
+  galMessage(GAL.list.length ? "" : emptyGridNote());
 }
 function galDropChip(i){ GAL.chips.splice(i, 1); sgRenderChips(); runSearch(); }
 function galDropText(i){ GAL.texts.splice(i, 1); sgRenderChips(); runSearch(); }
@@ -11907,6 +11936,25 @@ async function selfTest(){
        a location with no .photoindex CREATES an empty one -- so the absence of
        a record file is the only thing that tells them apart. */
     eq("and is known to hold no record file at all", IDX.hasLog, false);
+    /* The scan that creates the log must clear that, or the "wrong folder"
+       message outlives the write it is complaining about. Nothing reloads
+       records after a scan, so loadRecords cannot be what updates it. */
+    await appendLines("records.jsonl", [{ id:"haslog-probe", path:"p.jpg", status:"ok" }]);
+    eq("writing the log makes the index non-empty without a reload", IDX.hasLog, true);
+    /* Only a MISSING file means an empty index. A dropped permission or a
+       share that went away lands in the same catch, and calling that "empty"
+       clears memory and then blames the folder for an index that is fine. */
+    {
+      const realDir = IDX.dir, keptSize = IDX.records.size;
+      IDX.dir = { getFileHandle: async () => {
+        throw Object.assign(new DOMException("no access", "NotAllowedError"),
+                            { name:"NotAllowedError" }); } };
+      let threw = false;
+      try { await loadRecords(); } catch { threw = true; }
+      IDX.dir = realDir;
+      ok("a read that FAILS is reported, not reported as an empty index", threw);
+      eq("and the records already in memory are left alone", IDX.records.size, keptSize);
+    }
     S.indexMode = savedMode; S.indexDirHandle = savedIdxDir;
     await ensureIndex(); IDX.loaded = false; await loadRecords(); await loadVectors();
     eq("switching back restores the original index", IDX.records.size, 4);
@@ -14161,7 +14209,9 @@ async function selfTest(){
          responses. */
       {
         const keepMode = S.indexMode, keepDir = S.indexDirHandle, keepLog = IDX.hasLog;
+        const keepRecs = IDX.records, keepView = GAL.view;
         try {
+          IDX.records = new Map();
           S.indexMode = "custom";
           S.indexDirHandle = { name:"PhotoSearch-index", kind:"directory" };
           IDX.hasLog = true;
@@ -14177,15 +14227,44 @@ async function selfTest(){
           ok("naming it, so it can be compared with what Settings shows",
              /PhotoSearch-index/.test(m), m);
 
+          /* Not having looked is not the same as having looked and found
+             nothing. Accusing a folder before reading it is the worst of the
+             three messages to get wrong. */
+          IDX.hasLog = null;
+          m = emptyIndexNote();
+          ok("before any index is read it makes no claim about the folder",
+             !/\.photoindex|no records file|not the folder/i.test(m), m);
+
           S.indexMode = "folder"; S.indexDirHandle = null;
           const noFolder = S.dirHandle;
           S.dirHandle = null;
+          IDX.hasLog = false;
           m = emptyIndexNote();
           ok("with nothing chosen at all it stays the plain message",
              !/\/\.photoindex/.test(m), m);
           S.dirHandle = noFolder;
+
+          /* An empty SCOPE over a full library is not an empty index. */
+          S.indexMode = "custom";
+          S.indexDirHandle = { name:"PhotoSearch-index", kind:"directory" };
+          IDX.hasLog = false;
+          IDX.records = new Map([["r1", { id:"r1", status:"ok" }]]);
+          GAL.view = "favourites";
+          ok("an empty Favourites does not accuse the index",
+             !/\.photoindex|records file/.test(emptyGridNote()), emptyGridNote());
+          ok("it says what Favourites is instead", /heart/i.test(emptyGridNote()));
+          GAL.view = "removed";
+          ok("nor does an empty Removed",
+             !/\.photoindex|records file/.test(emptyGridNote()), emptyGridNote());
+          ok("and it says removing is not deleting",
+             /never deleted/i.test(emptyGridNote()));
+          GAL.view = "all";
+          IDX.records = new Map();
+          ok("while a genuinely empty index still names the folder",
+             /PhotoSearch-index/.test(emptyGridNote()), emptyGridNote());
         } finally {
           S.indexMode = keepMode; S.indexDirHandle = keepDir; IDX.hasLog = keepLog;
+          IDX.records = keepRecs; GAL.view = keepView;
         }
       }
 

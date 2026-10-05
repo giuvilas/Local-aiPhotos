@@ -176,9 +176,11 @@ function renderTimeline(){
   const body = $("#tlBody");
   body.textContent = "";
   if (!TL.days.length){
+    /* TL.total counts what the SCOPE let through, so it is zero for an empty
+       Favourites over a full library -- which is not an empty index. */
     body.append(Object.assign(el("span", "dim"), { textContent: TL.total
       ? "No photos carry a date yet."
-      : emptyIndexNote() }));
+      : emptyGridNote() }));
     renderTimelineBar();
     return;
   }

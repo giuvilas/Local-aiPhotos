@@ -410,9 +410,7 @@ function renderScanStatus(){
     const b = el("b", bad ? "bad" : null, value);
     d.append(b); n.append(d);
   };
-  const where = (S.indexMode === "custom" && S.indexDirHandle)
-    ? S.indexDirHandle.name
-    : (S.dirHandle ? S.dirHandle.name : null);
+  const where = indexWhereName();
   row("Index", where || "not chosen", !where);
   row("Folder", S.dirHandle ? S.dirHandle.name : "not connected", !S.dirHandle);
   row("Records", IDX.loaded ? IDX.records.size.toLocaleString() : "\u2013");

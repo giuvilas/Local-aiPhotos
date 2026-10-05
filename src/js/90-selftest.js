@@ -399,6 +399,25 @@ async function selfTest(){
        a location with no .photoindex CREATES an empty one -- so the absence of
        a record file is the only thing that tells them apart. */
     eq("and is known to hold no record file at all", IDX.hasLog, false);
+    /* The scan that creates the log must clear that, or the "wrong folder"
+       message outlives the write it is complaining about. Nothing reloads
+       records after a scan, so loadRecords cannot be what updates it. */
+    await appendLines("records.jsonl", [{ id:"haslog-probe", path:"p.jpg", status:"ok" }]);
+    eq("writing the log makes the index non-empty without a reload", IDX.hasLog, true);
+    /* Only a MISSING file means an empty index. A dropped permission or a
+       share that went away lands in the same catch, and calling that "empty"
+       clears memory and then blames the folder for an index that is fine. */
+    {
+      const realDir = IDX.dir, keptSize = IDX.records.size;
+      IDX.dir = { getFileHandle: async () => {
+        throw Object.assign(new DOMException("no access", "NotAllowedError"),
+                            { name:"NotAllowedError" }); } };
+      let threw = false;
+      try { await loadRecords(); } catch { threw = true; }
+      IDX.dir = realDir;
+      ok("a read that FAILS is reported, not reported as an empty index", threw);
+      eq("and the records already in memory are left alone", IDX.records.size, keptSize);
+    }
     S.indexMode = savedMode; S.indexDirHandle = savedIdxDir;
     await ensureIndex(); IDX.loaded = false; await loadRecords(); await loadVectors();
     eq("switching back restores the original index", IDX.records.size, 4);
@@ -2653,7 +2672,9 @@ async function selfTest(){
          responses. */
       {
         const keepMode = S.indexMode, keepDir = S.indexDirHandle, keepLog = IDX.hasLog;
+        const keepRecs = IDX.records, keepView = GAL.view;
         try {
+          IDX.records = new Map();
           S.indexMode = "custom";
           S.indexDirHandle = { name:"PhotoSearch-index", kind:"directory" };
           IDX.hasLog = true;
@@ -2669,15 +2690,44 @@ async function selfTest(){
           ok("naming it, so it can be compared with what Settings shows",
              /PhotoSearch-index/.test(m), m);
 
+          /* Not having looked is not the same as having looked and found
+             nothing. Accusing a folder before reading it is the worst of the
+             three messages to get wrong. */
+          IDX.hasLog = null;
+          m = emptyIndexNote();
+          ok("before any index is read it makes no claim about the folder",
+             !/\.photoindex|no records file|not the folder/i.test(m), m);
+
           S.indexMode = "folder"; S.indexDirHandle = null;
           const noFolder = S.dirHandle;
           S.dirHandle = null;
+          IDX.hasLog = false;
           m = emptyIndexNote();
           ok("with nothing chosen at all it stays the plain message",
              !/\/\.photoindex/.test(m), m);
           S.dirHandle = noFolder;
+
+          /* An empty SCOPE over a full library is not an empty index. */
+          S.indexMode = "custom";
+          S.indexDirHandle = { name:"PhotoSearch-index", kind:"directory" };
+          IDX.hasLog = false;
+          IDX.records = new Map([["r1", { id:"r1", status:"ok" }]]);
+          GAL.view = "favourites";
+          ok("an empty Favourites does not accuse the index",
+             !/\.photoindex|records file/.test(emptyGridNote()), emptyGridNote());
+          ok("it says what Favourites is instead", /heart/i.test(emptyGridNote()));
+          GAL.view = "removed";
+          ok("nor does an empty Removed",
+             !/\.photoindex|records file/.test(emptyGridNote()), emptyGridNote());
+          ok("and it says removing is not deleting",
+             /never deleted/i.test(emptyGridNote()));
+          GAL.view = "all";
+          IDX.records = new Map();
+          ok("while a genuinely empty index still names the folder",
+             /PhotoSearch-index/.test(emptyGridNote()), emptyGridNote());
         } finally {
           S.indexMode = keepMode; S.indexDirHandle = keepDir; IDX.hasLog = keepLog;
+          IDX.records = keepRecs; GAL.view = keepView;
         }
       }
 

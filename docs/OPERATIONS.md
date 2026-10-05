@@ -376,6 +376,7 @@ Library**. Three things produce an empty grid:
 | *Nothing indexed yet in **X**/.photoindex/* | that index is real but holds no records — a scan has not run against it |
 | *No index in **X**/.photoindex/ — it has no records file* | almost always the wrong folder. Choosing an index location creates `.photoindex` there if it is missing, so an empty one appears wherever you point |
 | *Connect a folder in Settings first* | no photo folder and no index folder is open — usually a reload, which drops Chrome's folder permission |
+| *Nothing removed* / *No favourites yet* | the **scope** is empty, not the index. Switch the dropdown back to *All photos* |
 
 The second is the one that catches people. Picking the *parent* of the folder you meant, or
 letting the macOS panel return a highlighted subfolder, gives you a brand-new empty index rather

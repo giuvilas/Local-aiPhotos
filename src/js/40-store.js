@@ -4,7 +4,10 @@ const IDX = {
   dir:null, thumbs:null,
   records:new Map(),          // light records only: raw JSON + embeddings live on disk
   vec:{ dim:0, ids:[], rows:null, index:new Map() },
-  loaded:false, checkpoint:null, lastConfig:null
+  loaded:false, checkpoint:null, lastConfig:null,
+  /* null until an index has been read: "no record file" and "not looked
+     yet" are different answers, and only one of them means a wrong folder. */
+  hasLog:null
 };
 let libraryMaintenance = 0;
 async function withLibraryMaintenance(fn){
@@ -67,6 +70,15 @@ async function readTextIfAny(dir, name){
 
 /* The index is a .photoindex folder either beside the photos or inside a
    separate folder the user picked. One index folder describes one library. */
+/* The name of the folder the index lives in, by the same rule indexParent uses
+   to find it -- custom mode with no handle has NO index folder, rather than
+   quietly meaning the photo folder. Five copies of this expression had drifted
+   apart, and the one in the empty-grid message named the photo folder while
+   Settings said there was no index location at all. */
+function indexWhereName(){
+  if (S.indexMode === "custom") return S.indexDirHandle ? S.indexDirHandle.name : null;
+  return S.dirHandle ? S.dirHandle.name : null;
+}
 async function indexParent(){
   if (S.indexMode === "custom"){
     if (!S.indexDirHandle) throw new Error("No index folder chosen. Pick one in Settings.");
@@ -162,6 +174,10 @@ async function ensureIndex(onPhase, opts){
 /* records.jsonl is append-only; the last line for an id wins. */
 async function appendLines(name, lines){
   if (!lines.length) return;
+  /* Writing the log is what makes an index non-empty. Nothing reloads records
+     after a scan, so without this the "no record file" message survives the
+     scan that created the file it is complaining about. */
+  if (name === "records.jsonl") IDX.hasLog = true;
   return exclusive(async () => {
     const fh = await IDX.dir.getFileHandle(name, { create:true });
     const size = (await fh.getFile()).size;
@@ -190,7 +206,12 @@ async function loadRecords(onProgress){
   const built = new Map();
   let fh;
   try { fh = await IDX.dir.getFileHandle("records.jsonl"); }
-  catch {
+  catch (e){
+    /* ONLY a missing file means an empty index. A dropped permission, a share
+       that went away, or IDX.dir being null all land here too, and treating
+       them as "this index is empty" clears memory and then tells the user they
+       picked the wrong folder -- about an index that is perfectly fine. */
+    if (!isNotFound(e)) throw e;
     /* No log here means this index is EMPTY, not "keep whatever was loaded
        before". Switching index location used to leave the previous location's
        records in memory, so the new index planned against photos it had never

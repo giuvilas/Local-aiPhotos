@@ -199,9 +199,7 @@ async function preflightScan(){
      folder B silently created an empty index there and never asked. */
   const freshIndex = IDX.records.size === 0;
   if ((!S.indexChosen || freshIndex) && !$("#mock").checked){
-    const where = S.indexMode === "custom" && S.indexDirHandle
-      ? S.indexDirHandle.name
-      : (S.dirHandle ? S.dirHandle.name : "the photo folder");
+    const where = indexWhereName() || "the photo folder";
     const existing = IDX.records.size;
     const ok = confirm(
       "Where should the index be saved?\n\n"
@@ -672,9 +670,7 @@ async function planFaceScan(onPhase, signal){
      still on the share, both holding identical content, there was no way to tell
      from the outside which one a run had opened -- and a failure reading
      config.json looks the same either way. */
-  const where = (S.indexMode === "custom" && S.indexDirHandle)
-    ? S.indexDirHandle.name
-    : (S.dirHandle ? S.dirHandle.name : "?");
+  const where = indexWhereName() || "?";
   await say("Opening the index in " + where + "/.photoindex/…");
   await indexOp("opening the index", note => ensureIndex(note, { write:false }),
     { onPhase: say, timeoutMs: ioCeiling() });
