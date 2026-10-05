@@ -629,28 +629,44 @@ async function selfTest(){
         await new Promise(r => setTimeout(r, 120));
         ok("a chooser that never appears is explained at the button",
            !note.hidden && /No folder chooser yet/.test(note.textContent));
-        ok("and offers the reload that is the only real remedy",
-           [...note.querySelectorAll("button")].some(b => /Reload/.test(b.textContent)));
+        ok("and points at the route that needs no dialog, rather than a reload",
+           /[Dd]rag/.test(note.textContent)
+           && ![...note.querySelectorAll("button")].some(b => /Reload/.test(b.textContent)),
+           note.textContent.slice(0, 100));
 
-        /* THE fix. Chrome allows one dialog per document, and refusing a second
-           one poisons every picker on the page for the life of that page. A
-           chooser that is slow to appear -- a folder on a sleeping NAS -- makes
-           pressing again the natural thing to do, so the second press must not
-           reach Chrome at all. This is the only way anyone was getting stuck. */
+        /* A second press while one request is outstanding is held back, because
+           Chrome allows one dialog per document and the refusal would be a
+           confusing error on top of a button that already looks dead. The hold
+           must be SOFT: a promise that never settles never runs the `finally`,
+           so a hard block would show "still waiting" for the life of the page
+           -- the same dead end as the jam it was meant to help with, except
+           self-inflicted and with Chrome's own error hidden. */
         {
           let calls = 0;
           window.showDirectoryPicker = () => { calls++; return new Promise(() => {}); };
           $("#btnIndexDir").click();
           await new Promise(r => setTimeout(r, 10));
-          eq("pressing again while one is outstanding does not ask Chrome again", calls, 0);
-          ok("it says how long it has been waiting",
+          eq("a press while one is outstanding is held back", calls, 0);
+          ok("and says how long it has been waiting",
              /Still asking/.test(note.textContent) && /\ds\./.test(note.textContent),
              note.textContent.slice(0, 80));
-          ok("and says pressing again cannot help",
-             /cannot help/.test(note.textContent));
-          ok("while pointing at the route that needs no dialog",
+          ok("pointing at the route that needs no dialog",
              /[Dd]rag/.test(note.textContent));
-          PICKER_BUSY = 0;              // a reload is what really clears it
+          ok("without claiming a second press would break anything",
+             !/jam|cannot help|do not press/i.test(note.textContent),
+             note.textContent.slice(0, 120));
+
+          /* The soft part. The first promise above never settles, so this is
+             exactly the state a hard block would never leave. */
+          const realSoft = PICKER_SOFT_MS;
+          PICKER_SOFT_MS = 1;
+          await new Promise(r => setTimeout(r, 5));
+          $("#btnIndexDir").click();
+          await new Promise(r => setTimeout(r, 10));
+          eq("after long enough, a press goes through rather than being held forever",
+             calls, 1);
+          PICKER_SOFT_MS = realSoft;
+          PICKER_BUSY = 0;
         }
         /* Every folder picker in the app must go through the guard: one raw
            call left anywhere can still jam the single dialog Chrome allows,
@@ -660,8 +676,11 @@ async function selfTest(){
           /* The app's own code, not the suite's: the build marks each file. */
           const cut = all.indexOf("90-selftest.js ====");
           const app = cut > 0 ? all.slice(0, cut) : all;
-          const raw = [...app.matchAll(/await pickDirectory\(/g)].length;
-          eq("only the guarded wrapper calls the picker directly", raw, 1);
+          /* Count the thing that must happen once -- the call to Chrome --
+             not a wrapper someone could sidestep with `return pickDirectory()`,
+             a .then chain, or a direct showDirectoryPicker call. */
+          const raw = [...app.matchAll(/window\.showDirectoryPicker\(/g)].length;
+          eq("exactly one place in the app calls the picker", raw, 1);
         }
 
         window.showDirectoryPicker = () => Promise.reject(new Error(
@@ -669,7 +688,8 @@ async function selfTest(){
         $("#btnIndexDir").click();
         await new Promise(r => setTimeout(r, 40));
         ok("a refused chooser is explained at the button too",
-           !note.hidden && /stuck/i.test(note.textContent));
+           !note.hidden && /stuck/i.test(note.textContent),
+           note.textContent.slice(0, 120));
         ok("not only in a banner at the top of the page the user cannot see",
            $("#browserWarn").hidden === true);
 

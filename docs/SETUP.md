@@ -212,18 +212,19 @@ while a folder dialog is opening, and a dialog that has to list a **sleeping NAS
 share to wake — which on a measured share took 24 seconds just to answer its first request. The
 note under the button counts the seconds.
 
-**Do not press the button again.** Chrome allows one file dialog per document, and a second
-request while the first is outstanding is refused with *"File picker already active"* — after
-which **every** picker on the page is refused for the life of that page. Since v0.6.33 the app
-stops the second press from reaching Chrome, so this is no longer reachable by pressing twice;
-on an older build it was the usual way of getting stuck.
+Pressing again does not help: Chrome allows one file dialog per document, so a second request
+while the first is outstanding is simply refused. The app holds that press back and tells you how
+long the first has been waiting, rather than showing you the refusal.
 
 To avoid the dialog entirely, **drag the folder from Finder onto the button**. That hands the
 page a folder directly, with no dialog and nothing to jam. It works on *Choose folder* and on
 *Choose where to save the DB*.
 
-**"File picker already active".** If you do see it: reload the page — folders and settings are
-remembered. On macOS the panel process can also outlive the dialog:
+**"File picker already active".** This is the other failure, and it is permanent until you
+reload: Chrome keeps a per-document flag for an open picker, and a dialog that is dismissed
+*without settling its promise* leaves it set, after which every picker on the page is refused.
+Reload — folders and settings are remembered. On macOS the panel process can also outlive the
+dialog:
 ```bash
 pkill -9 -f openAndSavePanelService
 ```

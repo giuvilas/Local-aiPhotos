@@ -35,7 +35,7 @@ runtime, `qwen3.5-9b-mlx` (4-bit), and `text-embedding-nomic-embed-text-v1.5`.
 - [19. Hiding a photo is not deleting it](#19-hiding-a-photo-is-not-deleting-it)
 - [20. Things outlive the list that created them](#20-things-outlive-the-list-that-created-them)
 - [21. A setting can be wired correctly and still be undone downstream](#21-a-setting-can-be-wired-correctly-and-still-be-undone-downstream)
-- [22. Explaining a bad state is not the same as preventing it](#22-explaining-a-bad-state-is-not-the-same-as-preventing-it)
+- [22. Two different failures wearing the same error message](#22-two-different-failures-wearing-the-same-error-message)
 - [Reproducing any of this](#reproducing-any-of-this)
 <!-- index:end -->
 
@@ -747,34 +747,52 @@ because it is trusted exactly when something has already gone wrong and judgemen
 
 ---
 
-## 22. Explaining a bad state is not the same as preventing it
+## 22. Two different failures wearing the same error message
 
-Chrome allows **one file dialog per document**. A second `showDirectoryPicker()` while the first
-is unsettled is refused with *"File picker already active"* — and from then on every picker in
-that document is refused, for the life of the page. Only a reload clears it; nothing the page
-can do resets it.
+The folder chooser can fail in two ways that look identical from the page, and conflating them
+produced a confident, wrong diagnosis and a guard aimed at the wrong thing.
 
-Asking for a folder on a **sleeping SMB share** takes as long as the share takes to answer, and
-Chrome draws nothing while it waits. So the button looks dead, and pressing it again is the
-obvious thing to do. That press is what causes the jam.
+**The slow open.** `showDirectoryPicker()` returns a promise, and Chrome draws nothing while the
+native dialog opens. A dialog that must list a **sleeping SMB share** waits for the share to
+wake — 24 seconds, measured, just to answer its first request. The button is working and looks
+dead. Nothing is broken; the page simply has no way to show that it is waiting.
 
-The first fix detected the jam and explained it well: what had happened, that a reload clears
-it, that dragging a folder from Finder needs no dialog. The explanation was accurate, visible,
-and placed beside the button that had failed. **It was still not a fix** — the user kept
-reaching the state, because nothing stopped them.
+**The permanent jam.** Chrome keeps a per-document "a file picker is open" flag. If a dialog is
+ever **dismissed without settling its promise** — which is what an earlier button-disable
+experiment caused, by letting macOS tear the panel down — the flag stays set and every later
+picker in that document is refused for the life of the page. Only a reload clears it.
 
-The actual fix is three lines: while a request is outstanding, the second press never reaches
-Chrome. It shows how long the first has been waiting and says that pressing again cannot help.
-The state is then unreachable by the only route anyone was reaching it by.
+**A concurrent call is not the jam.** Calling the picker while a dialog is genuinely open is
+refused transiently; once the first settles, the next call works. Pressing the button twice is
+not what poisons a document.
 
-**The lesson is about where the effort went.** Two releases of careful diagnosis, messaging and
-tests, all describing a state that should not have been reachable. When a failure has a known
-trigger the page controls, guard the trigger; a good error message about it is what you write
-*afterwards*, for the cases you could not guard.
+**What went wrong here.** v0.6.33 asserted that the double press *was* the cause, added a hard
+block to prevent it, and said so in the user-facing text and in this file — contradicting a
+comment three functions away that had the mechanism right all along. The claim was never tested;
+it was inferred from the error message's wording and then written down as fact.
 
-A corollary: *one* raw call left anywhere re-opens the hole, because the resource is the
-document's, not the caller's. The suite reads the app's own source and fails if any call bypasses
-the guard.
+**The hard block was also a new dead end.** A promise that never settles never runs the
+`finally` that clears the flag, so after the real jam every later press would have shown "still
+waiting" forever, with Chrome's own error now hidden — the same wedge, self-inflicted. The hold
+is now soft: after sixty seconds a press goes through regardless. If the dialog really is up it
+is refused harmlessly and that is then known for certain; if it succeeds, the first promise was
+dead and the person recovered without reloading.
+
+**What actually helps the slow case**, and was already there: `id` so each picker remembers its
+own folder, `startIn` so the index picker does not open on the share at all, and the drop target,
+which takes a folder from Finder with no dialog involved and nothing to be busy.
+
+**The lessons.**
+
+1. **A plausible mechanism is not a measured one.** The fix was shipped, documented and tested
+   around a causal claim that thirty seconds in a real console would have settled — and that the
+   codebase already contradicted in a comment.
+2. **A guard with no exit is a dead end with better manners.** Any block on a resource that can
+   stop responding needs a threshold after which it gives up blocking.
+3. **Count the thing that must happen once.** The first version of the regression test counted
+   `await pickDirectory(`, which a `return pickDirectory(...)`, a `.then` chain or a direct
+   `showDirectoryPicker` call all slip past. It counts `window.showDirectoryPicker(` in the app's
+   own source now, and expects exactly one.
 
 [↑ Back to Index](#index)
 

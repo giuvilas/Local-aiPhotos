@@ -204,10 +204,13 @@ to inherit — and the merge had inherited them anyway.
 
 **One guarded path to the folder picker.** `pickDirectoryVisible()` is the only thing in the app
 that calls `showDirectoryPicker()`, and the suite reads the app's own source to keep it that way.
-Chrome allows one file dialog per *document*: a second request while the first is outstanding is
-refused, and from then on every picker on the page is refused for the life of that page. A folder
-on a sleeping share can take tens of seconds to offer, with nothing drawn while it waits, so the
-guard holds the second press rather than passing it on — see
+Chrome allows one file dialog per *document*, so a second request while the first is outstanding
+is refused; the guard holds that press back and says how long the first has been waiting, since a
+folder on a sleeping share can take tens of seconds to offer with nothing drawn meanwhile. The
+hold is **soft** — after a threshold a press goes through, because a promise that never settles
+would otherwise block every later press for the life of the page. This is separate from the
+permanent jam, which comes from a dialog dismissed without settling its promise, and which only a
+reload clears — see
 [FINDINGS §22](FINDINGS.md#22-explaining-a-bad-state-is-not-the-same-as-preventing-it). Dragging
 a folder from Finder onto the button is the route that involves no dialog at all, and is what the
 app points at whenever the dialog is slow.

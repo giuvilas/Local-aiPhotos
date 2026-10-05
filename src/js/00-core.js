@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.33";
+const APP_VERSION = "0.6.34";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -804,15 +804,9 @@ function pickerQuiet(host){
   host.hidden = false; host.innerHTML = "";
   host.append(el("b", null, "No folder chooser yet. "));
   host.append(document.createTextNode(
-    "It may still be opening \u2014 a folder on a sleeping NAS can take a while to offer, and "
-    + "Chrome shows nothing while it waits. Do NOT press the button again; one dialog is "
-    + "allowed at a time. Drag the folder from Finder onto the button instead, which needs no "
-    + "dialog, or reload and start over."));
-  const b = el("button", "btn sec");
-  b.textContent = "Reload and start over";
-  b.style.marginLeft = "10px";
-  b.onclick = () => location.reload();
-  host.append(b);
+    "It is probably still opening: Chrome shows nothing while it waits, and a folder on a "
+    + "sleeping NAS can take a while to offer. Dragging the folder from Finder onto the "
+    + "button skips the dialog entirely."));
 }
 function pickerDone(host){
   if (!host) return;
@@ -820,39 +814,46 @@ function pickerDone(host){
 }
 /* Resolves to a handle, or null when the person cancelled. Throws anything else
    on, so the caller still decides how to report it. */
-/* THE cause of the stuck chooser, and the only part of it this page controls.
-   Chrome allows ONE file dialog per document. Asking for a folder on a sleeping
-   SMB share can take as long as the share does to answer, during which nothing
-   appears on screen -- so the natural thing to do is press the button again.
-   That second call is refused with "File picker already active", and from then
-   on EVERY picker in the document is refused for the life of the page: only a
-   reload clears it, and nothing the page does can reset it.
+/* While one request is outstanding, a second press is held back rather than
+   passed on. Chrome allows one file dialog per document, so the second call
+   would be refused -- a confusing error on top of a button that already looks
+   dead, when the honest answer is "the first one is still opening".
 
-   So the second call is never made. While one is outstanding, pressing again
-   says how long it has been waiting and offers the two ways out. The stuck
-   state is then unreachable by pressing a button twice, which is the only way
-   anyone was reaching it. */
+   What this does NOT do is prevent the permanent jam. That comes from a dialog
+   dismissed without ever settling its promise (see the note on
+   offerPickerReset), not from a concurrent call, which is refused and then
+   forgotten. Treating the two as the same thing was wrong.
+
+   The hold is SOFT, and that matters: a promise that never settles never runs
+   the `finally`, so a hard block would keep every later press showing "still
+   waiting" for the life of the page -- the same dead end, self-inflicted, with
+   Chrome's own error now hidden. After PICKER_SOFT_MS the press goes through.
+   If Chrome really does still have the dialog up, it is refused harmlessly and
+   that is then known for certain; if it succeeds, the first promise was dead
+   and the person recovered without reloading. */
 let PICKER_BUSY = 0;
+let PICKER_SOFT_MS = 60000;
+function pickerHeld(){ return PICKER_BUSY && Date.now() - PICKER_BUSY < PICKER_SOFT_MS; }
 function pickerStillWaiting(host){
   if (!host) return;
   const secs = Math.max(1, Math.round((Date.now() - PICKER_BUSY) / 1000));
   host.hidden = false; host.innerHTML = "";
   host.append(el("b", null, "Still asking for the folder chooser \u2014 " + secs + "s. "));
   host.append(document.createTextNode(
-    "Chrome allows one dialog at a time, so pressing again cannot help and would "
-    + "jam it. A folder on a sleeping NAS can take a while to offer. Drag the "
-    + "folder from Finder onto the button instead \u2014 that needs no dialog."));
-  const b = el("button", "btn sec");
-  b.textContent = "Reload and start over";
-  b.style.marginLeft = "10px";
-  b.onclick = () => location.reload();
-  host.append(b);
+    "Chrome shows nothing while one opens, and a folder on a sleeping NAS can take a "
+    + "while to offer. Dragging the folder from Finder onto the button skips the dialog "
+    + "entirely."));
 }
+let PICKER_SEQ = 0;
 async function pickDirectoryVisible(host, opts){
-  if (PICKER_BUSY){ pickerStillWaiting(host); return null; }
+  if (pickerHeld()){ pickerStillWaiting(host); return null; }
   PICKER_BUSY = Date.now();
+  const seq = ++PICKER_SEQ;
   pickerWaiting(host);
-  const t = setTimeout(() => pickerQuiet(host), PICKER_NOTE_MS);
+  /* Only the latest request may write this note. An earlier call whose promise
+     never settles still has a timer pending, and it was overwriting the newer,
+     more specific message that replaced it. */
+  const t = setTimeout(() => { if (seq === PICKER_SEQ) pickerQuiet(host); }, PICKER_NOTE_MS);
   try {
     const h = await pickDirectory(opts);
     clearTimeout(t); pickerDone(host);
