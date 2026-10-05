@@ -185,6 +185,23 @@ after the Scan split. The suite now reads each handler's output host **out of th
 source** and checks that the button and the host share a pane, so the rule cannot drift from a
 hand-written table.
 
+**One scale, not a size per surface.** `--r-sm/md/lg/pill`, `--s-1…--s-5` and
+`--fs-xs…--fs-xl` are tokens, so a new surface inherits the proportions of the old ones instead
+of being measured by eye. The Grid's own controls live in the lens bar rather than a second
+sticky strip below it: two bars for one surface read as two surfaces.
+
+**The accent is two tokens, because text and fill are different jobs.** A blue dark enough to
+read *on* white is too dark to put white *on* in the dark theme, and the reverse. `--accent` is
+for text and `--accent-bg` for a filled control under `--accent-t`.
+
+**Contrast is measured, not assumed.** The suite computes the real ratio from the *computed*
+colours — compositing any alpha over its background — for every foreground/background pair the
+interface actually uses, under **both** themes, and fails below 4.5:1. The dark palette is a
+different set of colours rather than an inversion, so checking one theme proves nothing about
+the other. This caught an inherited regression: the fork's primary-button label measured
+3.65:1 in dark and 4.02:1 in light, exactly the figures the roadmap had recorded and asked not
+to inherit — and the merge had inherited them anyway.
+
 **⌘K reaches anything by name.** Three tabs can hold eighty controls only if nothing has to be
 hunted for; without the palette, a control behind a section is simply hidden. Commands are built
 **fresh each time it opens**, because what exists depends on the index — the people in it are

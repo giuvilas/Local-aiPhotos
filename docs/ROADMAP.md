@@ -411,7 +411,7 @@ wanting it by date means starting again.
 | RS-5 | **Built** (v0.6.29). Settings: Connection · Library · Scanning · Privacy & data · Diagnostics, behind the same rail | 1.5 |
 | RS-6 | **Built** (v0.6.30). Chat is a drawer over Explore, and an answer's photos land in the grid behind it | 1 |
 | RS-7 | **Built** (v0.6.31). ⌘K command palette: every control, every section and every named person by name | 1 |
-| RS-8 | Visual pass — **this is MU-01**, applied once across three tabs instead of eight | 2 |
+| RS-8 | **Built** (v0.6.32). Visual pass — **this was MU-01**, applied once across three tabs instead of eight | 2 |
 
 **8.5 days of reorganisation (RS-1…RS-6) plus 3 days of new work.** RS-8 *is* MU-01, so this
 milestone absorbs the visual work rather than competing with it, and re-skinning three tabs is
@@ -427,8 +427,8 @@ switch, the redesign loses its point; build that first and stop if it does not h
 
 ## MU — the Photos-style interface
 
-**Superseded in part by RS above**, which absorbs MU-01 as RS-8 and replaces MU-02's tab rail
-with the three-tab shell. MU-03 onwards (the grid and viewer) still stands.
+**MU-01 and MU-02 are done**, as RS-8 and RS-1 respectively. MU-03 onwards (the grid and
+viewer) still stands.
 
 It was ordered ahead of M0 on the owner's instruction.
 Stated once and then accepted: M0 carries data-integrity work rated P0, and running a

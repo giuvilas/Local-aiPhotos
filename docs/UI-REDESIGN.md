@@ -1,6 +1,6 @@
 # UI redesign: eight tabs into three
 
-**Status:** proposal, not yet built. Supersedes nothing; folds into roadmap item **MU**.
+**Status:** **built**, R-1 to R-8, in v0.6.24 – v0.6.32. Roadmap milestone **RS**, which absorbed MU-01.
 
 ## Index
 <!-- index:start -->
@@ -273,7 +273,7 @@ Estimates assume the existing build system and the 738-assertion suite.
 | **R-5** | **Built** (v0.6.29). Settings: five sections, Privacy & data written properly. | 1.5 |
 | **R-6** | **Built** (v0.6.30). Chat drawer; results populate the grid behind it. | 1 |
 | **R-7** | **Built** (v0.6.31). ⌘K palette: command registry, scored matching, person names. | 1 |
-| **R-8** | **Visual pass** — the fork's tokens and type scale (roadmap MU-01), applied once across three tabs instead of eight. | 2 |
+| **R-8** | **Built** (v0.6.32). Visual pass: one scale for radius, space and type; the accent split into text and fill roles; contrast measured in both themes. | 2 |
 | | **total** | **11.5** |
 
 **Of that, 8.5 days is reorganisation** (R-1 to R-6) and **3 days is new work**: ⌘K did not

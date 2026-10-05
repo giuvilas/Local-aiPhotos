@@ -9,6 +9,7 @@ library.
 - [The self-test](#the-self-test)
 - [Running the self-test in your own Chrome](#running-the-self-test-in-your-own-chrome)
   - [Reading the report](#reading-the-report)
+- [Contrast is an assertion, not a review](#contrast-is-an-assertion-not-a-review)
 - [Running it headlessly](#running-it-headlessly)
 - [Verifying a build](#verifying-a-build)
 - [Testing against storage that misbehaves](#testing-against-storage-that-misbehaves)
@@ -137,6 +138,22 @@ plain-text version on the clipboard for an issue.
 
 [↑ Back to Index](#index)
 
+
+## Contrast is an assertion, not a review
+
+Every foreground/background pair the interface puts on screen is measured from the **computed**
+colours, under both `data-theme="light"` and `data-theme="dark"`, and anything below **4.5:1**
+fails. Alpha is composited over its background first, so a translucent surface is judged as it
+renders rather than as it is written.
+
+Checking one theme proves nothing about the other: the dark palette is a different set of
+colours, not an inversion. When this test was first written it failed four pairs in light and
+one in dark — including a primary-button label at 3.65:1 that the roadmap had explicitly listed
+as a regression not to inherit from the fork, and which had been inherited anyway.
+
+[↑ Back to Index](#index)
+
+---
 
 ## Running it headlessly
 

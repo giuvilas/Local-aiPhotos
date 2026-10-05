@@ -2527,6 +2527,67 @@ async function selfTest(){
         eq("every control writes somewhere it can be seen from", wrong.join(", "), "");
       }
 
+      /* ---- RS-8: the palette has to be readable, in both themes ----
+         The fork's shapes were worth taking and its contrast was not: its .btn
+         label measured 4.02:1 in light and 3.65:1 in dark. Measuring the real
+         computed colours is the only way to keep that from creeping back, and
+         it has to be done under BOTH themes, because the dark palette is a
+         different set of colours rather than an inversion. */
+      {
+        const root = document.documentElement;
+        const wasTheme = root.getAttribute("data-theme");
+        const lin = c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        const relLum = rgb => 0.2126 * lin(rgb[0]/255) + 0.7152 * lin(rgb[1]/255) + 0.0722 * lin(rgb[2]/255);
+        const parse = str => {
+          const m = /rgba?\(([^)]+)\)/.exec(str);
+          if (!m) return null;
+          const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+          return { rgb:[p[0], p[1], p[2]], a: p.length > 3 ? p[3] : 1 };
+        };
+        const over = (fg, bg) => fg.rgb.map((c, i) => c * fg.a + bg.rgb[i] * (1 - fg.a));
+        const ratio = (fg, bg) => {
+          const f = relLum(fg), b = relLum(bg);
+          const hi = Math.max(f, b), lo = Math.min(f, b);
+          return (hi + 0.05) / (lo + 0.05);
+        };
+        const tok = name => {
+          const v = getComputedStyle(root).getPropertyValue(name).trim();
+          const probe = el("span");
+          probe.style.color = v; document.body.append(probe);
+          const got = parse(getComputedStyle(probe).color);
+          probe.remove();
+          return got;
+        };
+        /* Every pair the interface actually puts on screen. */
+        const pairs = [
+          ["--text", "--bg", "body text"],
+          ["--text", "--panel", "text on a card"],
+          ["--text", "--panel2", "text on an inset"],
+          ["--dim", "--bg", "a hint"],
+          ["--dim", "--panel", "a hint on a card"],
+          ["--dim", "--panel2", "a hint on an inset"],
+          ["--accent", "--bg", "a link"],
+          ["--accent", "--panel", "a link on a card"],
+          ["--accent-t", "--accent-bg", "a primary button's label"],
+          ["--err", "--panel", "a destructive label"],
+          ["--warn", "--panel", "a warning"],
+          ["--ok", "--panel", "a success"]
+        ];
+        for (const theme of ["light", "dark"]){
+          root.setAttribute("data-theme", theme);
+          const bad = [];
+          for (const [f, b, what] of pairs){
+            const fg = tok(f), bg = tok(b);
+            if (!fg || !bg) continue;
+            const r = ratio(over(fg, bg), bg.rgb);
+            if (r < 4.5) bad.push(what + " " + r.toFixed(2) + ":1");
+          }
+          eq("nothing falls below 4.5:1 in " + theme, bad.join(", "), "");
+        }
+        if (wasTheme) root.setAttribute("data-theme", wasTheme);
+        else root.removeAttribute("data-theme");
+      }
+
       /* ---- RS-7: anything by name ----
          Three tabs hold eighty controls only if the palette can reach them.
          A command that names a control nothing can press, or that presses it

@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.31";
+const APP_VERSION = "0.6.32";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -315,6 +315,9 @@ function showTab(name, opts){
     /* Scope reads on the arrangements of photos. People, Search and Chat
        answer a different question, so it is hidden rather than lying. */
     $("#lensScopeWrap").hidden = !SCOPED_LENSES.includes(name);
+    /* The Grid's controls live in the lens bar now, so they come and go with
+       the lens they belong to rather than with a section of their own. */
+    if ($("#galBar")) $("#galBar").hidden = name !== "library";
     $("#lensScope").value = curScope;
   }
   /* Favourites is not a view and never was: the tab rendered the Library's own

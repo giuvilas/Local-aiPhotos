@@ -15,115 +15,161 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
-- [0.6.31 (2026-10-05)](#0631-2026-10-05)
-  - [Added](#added)
+- [0.6.32 (2026-10-05)](#0632-2026-10-05)
   - [Changed](#changed)
-- [0.6.30 (2026-10-05)](#0630-2026-10-05)
-  - [Changed](#changed-1)
   - [Fixed](#fixed)
-- [0.6.29 (2026-10-05)](#0629-2026-10-05)
+  - [Added](#added)
+  - [Milestone](#milestone)
+- [0.6.31 (2026-10-05)](#0631-2026-10-05)
+  - [Added](#added-1)
+  - [Changed](#changed-1)
+- [0.6.30 (2026-10-05)](#0630-2026-10-05)
   - [Changed](#changed-2)
   - [Fixed](#fixed-1)
-  - [Added](#added-1)
-- [0.6.28 (2026-10-04)](#0628-2026-10-04)
+- [0.6.29 (2026-10-05)](#0629-2026-10-05)
   - [Changed](#changed-3)
   - [Fixed](#fixed-2)
-- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Added](#added-2)
+- [0.6.28 (2026-10-04)](#0628-2026-10-04)
+  - [Changed](#changed-4)
   - [Fixed](#fixed-3)
+- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Fixed](#fixed-4)
   - [Removed](#removed)
   - [Documentation](#documentation)
 - [0.6.26 (2026-10-04)](#0626-2026-10-04)
-  - [Changed](#changed-4)
-  - [Added](#added-2)
+  - [Changed](#changed-5)
+  - [Added](#added-3)
   - [Removed](#removed-1)
 - [0.6.25 (2026-10-04)](#0625-2026-10-04)
-  - [Changed](#changed-5)
-  - [Fixed](#fixed-4)
-- [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-6)
   - [Fixed](#fixed-5)
-- [0.6.23 (2026-10-04)](#0623-2026-10-04)
-  - [Fixed](#fixed-6)
-  - [Added](#added-3)
-- [0.6.22 (2026-10-03)](#0622-2026-10-03)
-  - [Added](#added-4)
-- [0.6.21 (2026-10-03)](#0621-2026-10-03)
-  - [Fixed](#fixed-7)
+- [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-7)
-- [0.6.20 (2026-10-02)](#0620-2026-10-02)
-  - [Changed](#changed-8)
-- [0.6.19 (2026-10-02)](#0619-2026-10-02)
-  - [Changed](#changed-9)
-- [0.6.18 (2026-10-02)](#0618-2026-10-02)
+  - [Fixed](#fixed-6)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+  - [Fixed](#fixed-7)
+  - [Added](#added-4)
+- [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-5)
-- [0.6.17 (2026-10-02)](#0617-2026-10-02)
+- [0.6.21 (2026-10-03)](#0621-2026-10-03)
   - [Fixed](#fixed-8)
-- [0.6.16 (2026-10-02)](#0616-2026-10-02)
-  - [Added](#added-6)
-- [0.6.15 (2026-10-02)](#0615-2026-10-02)
-  - [Fixed](#fixed-9)
-- [0.6.14 (2026-10-02)](#0614-2026-10-02)
+  - [Changed](#changed-8)
+- [0.6.20 (2026-10-02)](#0620-2026-10-02)
+  - [Changed](#changed-9)
+- [0.6.19 (2026-10-02)](#0619-2026-10-02)
   - [Changed](#changed-10)
-- [0.6.13 (2026-10-02)](#0613-2026-10-02)
-  - [Changed](#changed-11)
-- [0.6.12 (2026-10-02)](#0612-2026-10-02)
+- [0.6.18 (2026-10-02)](#0618-2026-10-02)
+  - [Added](#added-6)
+- [0.6.17 (2026-10-02)](#0617-2026-10-02)
+  - [Fixed](#fixed-9)
+- [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-7)
-- [0.6.11 (2026-10-02)](#0611-2026-10-02)
-  - [Added](#added-8)
-- [0.6.10 (2026-10-02)](#0610-2026-10-02)
-  - [Changed](#changed-12)
-- [0.6.9 (2026-10-02)](#069-2026-10-02)
-  - [Changed](#changed-13)
-- [0.6.8 (2026-10-02)](#068-2026-10-02)
-  - [Added](#added-9)
-- [0.6.7 (2026-10-02)](#067-2026-10-02)
+- [0.6.15 (2026-10-02)](#0615-2026-10-02)
   - [Fixed](#fixed-10)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
-  - [Fixed](#fixed-11)
-- [0.6.5 (2026-10-02)](#065-2026-10-02)
-  - [Added](#added-10)
-- [0.6.4 (2026-10-02)](#064-2026-10-02)
-  - [Added](#added-11)
-- [0.6.3 (2026-10-01)](#063-2026-10-01)
-  - [Added](#added-12)
+- [0.6.14 (2026-10-02)](#0614-2026-10-02)
+  - [Changed](#changed-11)
+- [0.6.13 (2026-10-02)](#0613-2026-10-02)
+  - [Changed](#changed-12)
+- [0.6.12 (2026-10-02)](#0612-2026-10-02)
+  - [Added](#added-8)
+- [0.6.11 (2026-10-02)](#0611-2026-10-02)
+  - [Added](#added-9)
+- [0.6.10 (2026-10-02)](#0610-2026-10-02)
+  - [Changed](#changed-13)
+- [0.6.9 (2026-10-02)](#069-2026-10-02)
   - [Changed](#changed-14)
-- [0.6.2 (2026-10-01)](#062-2026-10-01)
+- [0.6.8 (2026-10-02)](#068-2026-10-02)
+  - [Added](#added-10)
+- [0.6.7 (2026-10-02)](#067-2026-10-02)
+  - [Fixed](#fixed-11)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-12)
+- [0.6.5 (2026-10-02)](#065-2026-10-02)
+  - [Added](#added-11)
+- [0.6.4 (2026-10-02)](#064-2026-10-02)
+  - [Added](#added-12)
+- [0.6.3 (2026-10-01)](#063-2026-10-01)
   - [Added](#added-13)
   - [Changed](#changed-15)
-- [0.6.1 (2026-10-01)](#061-2026-10-01)
+- [0.6.2 (2026-10-01)](#062-2026-10-01)
   - [Added](#added-14)
   - [Changed](#changed-16)
-- [0.6.0 (2026-10-01)](#060-2026-10-01)
+- [0.6.1 (2026-10-01)](#061-2026-10-01)
   - [Added](#added-15)
   - [Changed](#changed-17)
-- [0.5.4 (2026-10-01)](#054-2026-10-01)
-  - [Changed](#changed-18)
-- [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-12)
-- [0.5.2 (2026-10-01)](#052-2026-10-01)
+- [0.6.0 (2026-10-01)](#060-2026-10-01)
   - [Added](#added-16)
+  - [Changed](#changed-18)
+- [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-19)
-- [0.5.1 (2026-10-01)](#051-2026-10-01)
-  - [Changed](#changed-20)
-- [0.5.0 (2026-10-01)](#050-2026-10-01)
-  - [Added](#added-17)
-  - [Changed](#changed-21)
+- [0.5.3 (2026-10-01)](#053-2026-10-01)
   - [Fixed](#fixed-13)
-- [0.4.0 (2026-10-01)](#040-2026-10-01)
+- [0.5.2 (2026-10-01)](#052-2026-10-01)
+  - [Added](#added-17)
+  - [Changed](#changed-20)
+- [0.5.1 (2026-10-01)](#051-2026-10-01)
+  - [Changed](#changed-21)
+- [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-18)
   - [Changed](#changed-22)
-- [0.3.0 (2026-09-30)](#030-2026-09-30)
+  - [Fixed](#fixed-14)
+- [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-19)
   - [Changed](#changed-23)
-  - [Fixed](#fixed-14)
-- [0.2.0 (2026-09-29)](#020-2026-09-29)
+- [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-20)
   - [Changed](#changed-24)
   - [Fixed](#fixed-15)
-- [0.1.0 (2026-09-23)](#010-2026-09-23)
+- [0.2.0 (2026-09-29)](#020-2026-09-29)
   - [Added](#added-21)
+  - [Changed](#changed-25)
+  - [Fixed](#fixed-16)
+- [0.1.0 (2026-09-23)](#010-2026-09-23)
+  - [Added](#added-22)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.32 (2026-10-05)
+
+**Summary:** the visual pass (**RS-8**), and with it the redesign: eight tabs are three.
+
+### Changed
+
+- **One scale for radius, space and type**, as tokens, so a new surface inherits the proportions
+  of the old ones instead of being measured by eye. Applied across the lens bar, the rails, the
+  filters panel, the chat drawer and the command palette.
+- **The Grid's own controls moved into the lens bar.** Count, size, sort, Select and the
+  selection actions were a second sticky strip directly under the first, and two bars for one
+  surface read as two surfaces.
+- **Every section has the same title treatment** — a heading and one line saying what it is for.
+  Scan → Photos had neither.
+
+### Fixed
+
+- **Contrast, in both themes.** The accent is now two tokens, because text and fill are
+  different jobs: a blue dark enough to read *on* white is too dark to put white *on* in the
+  dark theme, and the reverse. `--accent` is for text, `--accent-bg` for a filled control.
+  Five pairs were below 4.5:1 — a link at 3.60:1 in light, and the **primary button's label at
+  3.65:1 in dark**, which is exactly the figure the roadmap recorded as a regression not to
+  inherit from the fork. It had been inherited anyway.
+
+### Added
+
+- **A contrast assertion.** Every foreground/background pair the interface uses is measured from
+  the *computed* colours, compositing alpha over its background, under both themes, and fails
+  below 4.5:1. Checking one theme proves nothing about the other: the dark palette is a
+  different set of colours, not an inversion.
+
+### Milestone
+
+**RS-1 to RS-8 complete.** Library, Favourites, Search, Chat, Timeline, People, Scan and
+Settings — eight tabs, 80 controls, five of them showing the same photos arranged differently —
+are now **Explore, Scan and Settings**, with every control mapped to a home and none dropped.
+See [UI-REDESIGN.md](docs/UI-REDESIGN.md).
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.31 (2026-10-05)
 
