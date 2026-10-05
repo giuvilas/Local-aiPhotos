@@ -165,7 +165,7 @@ and each a dead end from the others.
 | layer | values | meaning |
 |---|---|---|
 | top-level tab | `explore` `scan` `settings` | what you are doing |
-| lens (Explore only) | `library` (shown as **Grid**) `timeline` `people` `chat` | how the photos are arranged |
+| lens (Explore only) | `library` (shown as **Grid**) `timeline` `people` | how the photos are arranged |
 | scope (Explore only) | `all` `favourites` `removed` | which photos |
 | section (Scan) | `photos` `faces` `maint` | which job |
 | section (Settings) | `conn` `lib` `scanning` `privacy` `diag` | what is being configured |
@@ -184,6 +184,19 @@ failed 1,565 of its first 1,575 showing only a rising count. Three controls did 
 after the Scan split. The suite now reads each handler's output host **out of the page's own
 source** and checks that the button and the host share a pane, so the rule cannot drift from a
 hand-written table.
+
+**Chat is a drawer, not a room you leave.** It slides over Explore from the right, and the page
+makes room for it rather than being covered — a fixed panel would otherwise sit on top of its
+own toggle and the footer. Opening and closing is a class, never the `hidden` attribute: an
+element with `display:none` cannot animate, and `[hidden]` has to keep meaning "really not
+there", which the suite checks across the whole page.
+
+**An answer's photos land in the grid behind it.** `chatShowInGrid()` sets `GAL.results` and the
+`search` view, so closing the drawer leaves you holding the result: you can open the photos,
+step through them, select them, or regroup them by date. Before this they were trapped in the
+chat bubble and the only way to work with them was to ask for them again somewhere else. The
+bubble keeps its own copy, because the conversation is the record of what was asked, and an
+older turn offers to put its photos back in the grid.
 
 **Face data has two doors.** `Delete all face data` is in Scan → Faces, where you are when a
 pass went wrong and you want to start again, and in Settings → Privacy & data, where you are
@@ -214,7 +227,8 @@ documentation and in saved chat history:
 | `#library` | the Grid lens |
 | `#favourites` | the Grid lens with scope `favourites` — it carries its scope |
 | `#search` | the Grid lens, where the search field's results are shown |
-| `#timeline` `#people` `#chat` | the lens of that name |
+| `#timeline` `#people` | the lens of that name |
+| `#chat`, `#explore/chat` | the Grid, with the chat drawer open |
 | `#scan` `#settings` | unchanged; `#scan/faces`, `#settings/privacy` and the rest address a section, and a tab's first section is just the tab |
 
 `tabFromHash()` remains as the "which view does this address name" helper the suite and older

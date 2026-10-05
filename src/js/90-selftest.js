@@ -2527,6 +2527,85 @@ async function selfTest(){
         eq("every control writes somewhere it can be seen from", wrong.join(", "), "");
       }
 
+      /* ---- RS-6: Chat is a drawer, not a room you leave ----
+         An answer's photos used to be trapped in the bubble: the only way to
+         work with them was to ask for them again somewhere else. */
+      {
+        const wasOpen = chatIsOpen(), wasView = GAL.view, wasRes = GAL.results;
+        ok("Chat is no longer a lens", !LENSES.includes("chat"));
+        ok("nor a section of its own", !VIEWS.includes("chat"));
+        eq("its old address still names it", tabFromHash("#chat"), "chat");
+        eq("and opens the grid with the drawer out",
+           JSON.stringify(routeFromHash("#chat")),
+           JSON.stringify({ view:"library", chat:true }));
+        eq("the lens form does too",
+           JSON.stringify(routeFromHash("#explore/chat")),
+           JSON.stringify({ view:"library", chat:true }));
+
+        setChatOpen(false);
+        ok("the drawer starts closed", !chatIsOpen());
+        ok("and is never display:none, or it could not slide",
+           getComputedStyle($("#chatDrawer")).display !== "none");
+        showTab("chat");
+        ok("that address opens it", chatIsOpen());
+        eq("while leaving you on the grid", curTab, "library");
+        $("#chatClose").click();
+        ok("and it closes again", !chatIsOpen());
+        ok("the toggle says so",
+           $("#chatToggle").getAttribute("aria-expanded") === "false");
+
+        /* The point of the drawer: the answer lands behind it. */
+        const ids = GAL.list.slice(0, 3).map(x => x.r.id);
+        chatShowInGrid(ids);
+        eq("an answer's photos go into the grid", GAL.view, "search");
+        eq("exactly those photos", GAL.results.join(","), ids.join(","));
+        eq("so the grid is showing them", GAL.list.length, 3);
+        /* and they survive the drawer closing, which is the whole point */
+        setChatOpen(true); setChatOpen(false);
+        eq("closing the drawer keeps the result", GAL.list.length, 3);
+
+        chatShowInGrid(["nosuchphoto"]);
+        eq("an answer with nothing live in it leaves the grid alone",
+           GAL.results.join(","), ids.join(","));
+
+        /* Drive a whole turn with the agent stubbed, so the call site is
+           covered too: testing chatShowInGrid alone would pass even if the
+           answer never called it. */
+        {
+          const realAgent = askAgent, keepTurns = CHAT.turns.slice();
+          const keepLog = $("#chatLog").innerHTML, keepLast = CHAT.lastPhotos;
+          /* Widen the grid BEFORE picking photos to ask for: it is still
+             scoped to the three from the check above, so slicing past them
+             would ask for nothing and every assertion below would agree with
+             an empty answer. */
+          GAL.view = "all"; GAL.results = []; galBuild();
+          const want = GAL.list.slice(0, 2).map(x => x.r.id);
+          ok("there are photos to ask for", want.length === 2,
+             want.length + " of " + GAL.list.length);
+          askAgent = async () => ({
+            answer: "Here they are.",
+            trace: [{ name:"search_photos", args:{}, result:{} }],
+            photos: want.map(id => IDX.records.get(id))
+          });
+          try {
+            $("#chatInput").value = "show me three photos";
+            await sendChat();
+            eq("a finished answer puts its photos in the grid behind",
+               GAL.results.join(","), want.join(","));
+            eq("and the grid is showing them", GAL.list.length, want.length);
+            ok("the bubble still holds them too",
+               $("#chatLog").querySelectorAll("figure, .thumb, img").length > 0,
+               String($("#chatLog").querySelectorAll("figure").length));
+          } finally {
+            askAgent = realAgent; CHAT.turns = keepTurns;
+            $("#chatLog").innerHTML = keepLog; CHAT.lastPhotos = keepLast;
+          }
+        }
+
+        GAL.view = wasView; GAL.results = wasRes; galBuild();
+        setChatOpen(wasOpen);
+      }
+
       /* ---- RS-5: Settings is five groups, not one scroll ---- */
       {
         const wasSec = curSection.settings, wasT = curTab;
@@ -2715,7 +2794,7 @@ async function selfTest(){
       const was = curTab, wasScope = curScope;
       showTab("scan");
       ok("showing a tab selects it and hides the others",
-         $("#tab-scan").hidden === false && $("#tab-chat").hidden === true
+         $("#tab-scan").hidden === false && $("#tab-people").hidden === true
          && document.querySelector('#topTabs button[data-tab="scan"]').getAttribute("aria-selected") === "true");
       ok("the lens bar belongs to Explore and is hidden elsewhere", $("#lensbar").hidden === true);
 

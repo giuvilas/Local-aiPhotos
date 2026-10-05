@@ -15,109 +15,142 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
-- [0.6.29 (2026-10-05)](#0629-2026-10-05)
+- [0.6.30 (2026-10-05)](#0630-2026-10-05)
   - [Changed](#changed)
   - [Fixed](#fixed)
-  - [Added](#added)
-- [0.6.28 (2026-10-04)](#0628-2026-10-04)
+- [0.6.29 (2026-10-05)](#0629-2026-10-05)
   - [Changed](#changed-1)
   - [Fixed](#fixed-1)
-- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Added](#added)
+- [0.6.28 (2026-10-04)](#0628-2026-10-04)
+  - [Changed](#changed-2)
   - [Fixed](#fixed-2)
+- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Fixed](#fixed-3)
   - [Removed](#removed)
   - [Documentation](#documentation)
 - [0.6.26 (2026-10-04)](#0626-2026-10-04)
-  - [Changed](#changed-2)
+  - [Changed](#changed-3)
   - [Added](#added-1)
   - [Removed](#removed-1)
 - [0.6.25 (2026-10-04)](#0625-2026-10-04)
-  - [Changed](#changed-3)
-  - [Fixed](#fixed-3)
-- [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-4)
   - [Fixed](#fixed-4)
-- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+- [0.6.24 (2026-10-04)](#0624-2026-10-04)
+  - [Changed](#changed-5)
   - [Fixed](#fixed-5)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+  - [Fixed](#fixed-6)
   - [Added](#added-2)
 - [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-3)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
-  - [Fixed](#fixed-6)
-  - [Changed](#changed-5)
-- [0.6.20 (2026-10-02)](#0620-2026-10-02)
+  - [Fixed](#fixed-7)
   - [Changed](#changed-6)
-- [0.6.19 (2026-10-02)](#0619-2026-10-02)
+- [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-7)
+- [0.6.19 (2026-10-02)](#0619-2026-10-02)
+  - [Changed](#changed-8)
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
   - [Added](#added-4)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
-  - [Fixed](#fixed-7)
+  - [Fixed](#fixed-8)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-5)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
-  - [Fixed](#fixed-8)
+  - [Fixed](#fixed-9)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
-  - [Changed](#changed-8)
-- [0.6.13 (2026-10-02)](#0613-2026-10-02)
   - [Changed](#changed-9)
+- [0.6.13 (2026-10-02)](#0613-2026-10-02)
+  - [Changed](#changed-10)
 - [0.6.12 (2026-10-02)](#0612-2026-10-02)
   - [Added](#added-6)
 - [0.6.11 (2026-10-02)](#0611-2026-10-02)
   - [Added](#added-7)
 - [0.6.10 (2026-10-02)](#0610-2026-10-02)
-  - [Changed](#changed-10)
-- [0.6.9 (2026-10-02)](#069-2026-10-02)
   - [Changed](#changed-11)
+- [0.6.9 (2026-10-02)](#069-2026-10-02)
+  - [Changed](#changed-12)
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
   - [Added](#added-8)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
-  - [Fixed](#fixed-9)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-10)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-11)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-9)
 - [0.6.4 (2026-10-02)](#064-2026-10-02)
   - [Added](#added-10)
 - [0.6.3 (2026-10-01)](#063-2026-10-01)
   - [Added](#added-11)
-  - [Changed](#changed-12)
+  - [Changed](#changed-13)
 - [0.6.2 (2026-10-01)](#062-2026-10-01)
   - [Added](#added-12)
-  - [Changed](#changed-13)
+  - [Changed](#changed-14)
 - [0.6.1 (2026-10-01)](#061-2026-10-01)
   - [Added](#added-13)
-  - [Changed](#changed-14)
+  - [Changed](#changed-15)
 - [0.6.0 (2026-10-01)](#060-2026-10-01)
   - [Added](#added-14)
-  - [Changed](#changed-15)
-- [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-16)
+- [0.5.4 (2026-10-01)](#054-2026-10-01)
+  - [Changed](#changed-17)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-11)
+  - [Fixed](#fixed-12)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
   - [Added](#added-15)
-  - [Changed](#changed-17)
-- [0.5.1 (2026-10-01)](#051-2026-10-01)
   - [Changed](#changed-18)
+- [0.5.1 (2026-10-01)](#051-2026-10-01)
+  - [Changed](#changed-19)
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-16)
-  - [Changed](#changed-19)
-  - [Fixed](#fixed-12)
+  - [Changed](#changed-20)
+  - [Fixed](#fixed-13)
 - [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-17)
-  - [Changed](#changed-20)
+  - [Changed](#changed-21)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-18)
-  - [Changed](#changed-21)
-  - [Fixed](#fixed-13)
-- [0.2.0 (2026-09-29)](#020-2026-09-29)
-  - [Added](#added-19)
   - [Changed](#changed-22)
   - [Fixed](#fixed-14)
+- [0.2.0 (2026-09-29)](#020-2026-09-29)
+  - [Added](#added-19)
+  - [Changed](#changed-23)
+  - [Fixed](#fixed-15)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
   - [Added](#added-20)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.30 (2026-10-05)
+
+**Summary:** Chat becomes a drawer, and an answer's photos land in the grid behind it
+(**RS-6**). The structural redesign is complete.
+
+### Changed
+
+- **Chat is no longer a lens.** It slides in from the right over Explore, from the **Chat**
+  button at the end of the lens bar, and `Esc` closes it. It is something you consult while
+  looking at photos, not a place you go instead of looking at them.
+- **An answer's photos go into the grid behind the drawer.** Close it and you are holding the
+  result: you can open the photos, step through them, select them, or switch to Timeline and
+  see them by day. Until now they were trapped in the chat bubble, and the only way to work
+  with them was to ask for them again somewhere else. The bubble keeps its own copy — the
+  conversation is the record of what was asked — and an older turn offers to put its photos
+  back in the grid.
+- **The page makes room for the drawer** rather than being covered by it. A fixed panel was
+  sitting on top of its own toggle and the right-hand end of the footer.
+- `#chat` and `#explore/chat` open the Grid with the drawer out, so the photos have somewhere
+  to be.
+
+### Fixed
+
+- The drawer first used the `hidden` attribute with a `display` override so it could animate,
+  which broke the rule that `[hidden]` means *really* not there — a rule the suite checks
+  across the whole page. Open and closed are a class; `hidden` keeps its meaning.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.29 (2026-10-05)
 

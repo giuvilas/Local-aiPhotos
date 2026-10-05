@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.29";
+const APP_VERSION = "0.6.30";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -204,8 +204,8 @@ async function idbGet(k){ const db = await idb(); return new Promise((res, rej) 
    one still owns the <section> of that name; "Grid" is only what the lens is
    called on screen. */
 const TOPS = ["explore","scan","settings"];
-const VIEWS = ["library","timeline","people","chat","scan","settings"];
-const LENSES = ["library","timeline","people","chat"];
+const VIEWS = ["library","timeline","people","scan","settings"];
+const LENSES = ["library","timeline","people"];
 const SCOPES = ["all","favourites","removed"];
 /* Sections inside a tab. Scan is three jobs, not one: describing photos,
    finding faces, and housekeeping. */
@@ -250,11 +250,18 @@ function routeFromHash(hash){
   h = h.replace(/^#\/?/, "").toLowerCase().split(/[&?]/)[0];
   if (!h) return null;
   const [a, b] = h.split("/");
-  if (a === "explore") return { view: LENSES.includes(b) ? b : "library" };
+  if (a === "explore"){
+    if (b === "chat") return { view:"library", chat:true };
+    return { view: LENSES.includes(b) ? b : "library" };
+  }
   if (a === "favourites") return { view:"library", scope:"favourites" };
   /* Search was a tab and is now the field in the header, reachable from every
      lens. Its old address lands on the grid, where its results are shown. */
   if (a === "search") return { view:"library" };
+  /* Chat is a drawer over Explore now, not a room you go to. Its address opens
+     the grid with the drawer out, so the answer's photos have somewhere to be. */
+  if (a === "chat") return { view:"library", chat:true };
+  if (a === "explore" && b === "chat") return { view:"library", chat:true };
   if (VIEWS.includes(a))
     return (SECTIONS[a] || []).includes(b) ? { view:a, section:b } : { view:a };
   return null;                       // #selftest and the like are left alone
@@ -264,6 +271,7 @@ function routeFromHash(hash){
 function tabFromHash(hash){
   const r = routeFromHash(hash);
   if (!r) return null;
+  if (r.chat) return "chat";
   return r.scope === "favourites" ? "favourites" : r.view;
 }
 /* Some views read the whole index, so they are built when first shown rather
@@ -278,7 +286,6 @@ function tabShownHook(name){
     if (typeof galSetView === "function"
         && GAL.view !== "search" && GAL.view !== curScope) galSetView(curScope);
   }
-  if (name === "chat" && typeof chatFillGrids === "function") chatFillGrids();
   if (name === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
   if (name === "people" && typeof onPeopleShown === "function") onPeopleShown();
 }
@@ -289,6 +296,7 @@ function showTab(name, opts){
   opts = opts || {};
   if (curTab !== name) LENS_SCROLL[curTab] = window.scrollY;
   if (name === "favourites"){ name = "library"; opts.scope = "favourites"; }
+  if (name === "chat"){ name = "library"; opts.chat = true; }
   if (opts.scope && SCOPES.includes(opts.scope)) curScope = opts.scope;
   curTab = name; curTop = topOf(name);
   document.querySelectorAll("#topTabs button").forEach(x =>
@@ -317,6 +325,7 @@ function showTab(name, opts){
   VIEWS.forEach(t => { const s = $("#tab-" + t); if (s) s.hidden = (t !== sec); });
   tabShownHook(name);
   restoreLensScroll(name);
+  if (opts.chat && typeof setChatOpen === "function") setChatOpen(true);
 }
 /* After the hook, because a lens builds its content when first shown and there
    is no height to scroll into until it has. */

@@ -69,7 +69,8 @@ function restoreView(){
         refreshActiveTab();            // the lens on screen regroups the results
       }
       else if (s.removed && arranging) await setScope("removed");
-      if (s.open && curTab !== "chat"){
+      /* The viewer must not open underneath the chat drawer. */
+      if (s.open && !(typeof chatIsOpen === "function" && chatIsOpen())){
         const i = GAL.list.findIndex(x => x.r.id === s.open);
         if (i >= 0 && !VW.open && !$("#tab-library").hidden) openViewer(i);
       }

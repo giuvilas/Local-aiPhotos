@@ -51,6 +51,31 @@ function bubble(role){
   return { box:b, body };
 }
 
+/* Puts an answer's photos into the grid behind the drawer, and offers the same
+   on an older turn -- scrolling back to a previous answer and picking it up
+   again is the whole reason the conversation is kept. */
+function chatShowInGrid(ids, host){
+  const live = ids.filter(id => {
+    const r = IDX.records.get(id);
+    return r && !r.deleted && !r.hidden && r.status !== "error";
+  });
+  if (!live.length) return;
+  GAL.results = live;
+  GAL.view = "search";
+  GAL.sel.clear(); GAL.last = -1;
+  if (typeof galBuild === "function"){
+    galBuild(); galBar(); galClear(); galLayout();
+    if (curTab === "timeline" && typeof onTimelineShown === "function") onTimelineShown();
+  }
+  if (host){
+    const b = el("button", "btn sec");
+    b.textContent = "These are in the grid behind";
+    b.style.cssText = "margin-top:8px;font-size:12px;padding:4px 10px";
+    b.onclick = () => { chatShowInGrid(ids); setChatOpen(false); };
+    host.append(b);
+  }
+}
+
 function renderGrid(host, recs, title){
   for (const r of recs) thumbPin(r.id);      // keep these alive while displayed
   if (!recs.length) return;
@@ -271,7 +296,16 @@ async function sendChat(){
     renderTrace(extras, trace);
     const searched = trace.some(t => /search_photos|filter_photos|find_similar/.test(t.name));
     const { recs: shown, why } = gridFor(answer, photos, searched);
-    if (shown.length){ renderGrid(extras, shown, why); CHAT.lastPhotos = shown; }
+    if (shown.length){
+      renderGrid(extras, shown, why);
+      CHAT.lastPhotos = shown;
+      /* The drawer sits over the grid, so an answer's photos go INTO the grid
+         as well as into the bubble. Close the drawer and you are holding the
+         result: you can open them, step through, select, or regroup by date.
+         Before this they were trapped in the bubble and the only way to work
+         with them was to ask again somewhere else. */
+      chatShowInGrid(shown.map(p => p.id), extras);
+    }
     else if (trace.length) extras.append(el("div","hint","No photos matched."));
     CHAT.turns.push({ q, answer, ids:shown.map(p => p.id), at:new Date().toISOString() });
   } catch (e){
@@ -311,3 +345,33 @@ $("#chatSave").onclick = async () => {
     toast("Saved to .photoindex/chats/" + name);
   } catch (e){ toast("Could not save: " + humanError(e)); }
 };
+
+/* ---- the drawer ----
+   A toggle rather than a tab: Chat is something you consult while looking at
+   photos, not a place you go instead of looking at them. */
+function setChatOpen(open){
+  const d = $("#chatDrawer");
+  if (!d) return;
+  d.classList.toggle("open", !!open);
+  document.body.classList.toggle("chat-open", !!open);
+  $("#chatToggle").setAttribute("aria-expanded", String(!!open));
+  $("#chatToggle").classList.toggle("on", !!open);
+  if (open){
+    if (typeof chatFillGrids === "function") chatFillGrids();
+    const log = $("#chatLog");
+    if (log) log.scrollTop = log.scrollHeight;
+    setTimeout(() => $("#chatInput").focus(), 60);
+  }
+}
+function chatIsOpen(){
+  const d = $("#chatDrawer");
+  return !!d && d.classList.contains("open");
+}
+$("#chatToggle").onclick = () => setChatOpen(!chatIsOpen());
+$("#chatClose").onclick = () => setChatOpen(false);
+/* Esc closes it, unless the viewer is open -- that has first claim on Esc. */
+addEventListener("keydown", e => {
+  if (e.key === "Escape" && chatIsOpen() && !(typeof VW === "object" && VW.open)){
+    setChatOpen(false);
+  }
+});

@@ -192,7 +192,12 @@ selection and your scroll position all survive.
 | **Grid** | Every photo in one grid. The **Size** slider changes density. Click a photo and it grows out of its tile into a full-window viewer: `←` `→` step through, `R` rotates right, `Shift+R` rotates left, `I` shows details, `Esc` closes. **Select** enables multi-select (click, shift-click for a range, `⌘/Ctrl+A`); the rotate buttons turn the whole selection and **Remove** hides it. |
 | **Timeline** | The same photos by day, newest first, with places and occasions in the headings, a year bar and a date picker. |
 | **People** | The face groups. Name them, merge and split them; names then work in search and chat. Clicking a named person searches for them in the Grid. |
-| **Chat** | Ask about your photos in plain language. Shows which tools the model used and the photos it found. |
+
+**Chat** is a drawer, not a lens: the **Chat** button on the right of the lens bar slides it
+over from the side (`Esc` closes it). Ask in plain language, and the photos in the answer
+**appear in the grid behind** — so you can close the drawer and open them, step through them,
+select them or regroup them by date. It also shows which tools the model used.
+
 
 **Scope** — *All photos*, *Favourites*, *Removed* — applies to the Grid and the Timeline.
 Click the ♡ that appears on a photo (or press `F` in the viewer) to favourite it; in Select
@@ -230,8 +235,8 @@ the button so you can always see that filters are set. Clearing the search clear
 ### Links
 
 Every view has its own address, so you can bookmark or share one:
-`PhotoSearch.html#explore`, `#explore/timeline`, `#explore/people`, `#explore/chat`, `#scan`
-or `#settings`. Opening a link goes straight there, choosing a tab or lens updates the
+`PhotoSearch.html#explore`, `#explore/timeline`, `#explore/people`, `#scan`, `#scan/faces`,
+`#settings` or `#settings/privacy`. Opening a link goes straight there, choosing a tab or lens updates the
 address, and Back and Forward step through where you have been. Older links — `#library`,
 `#favourites`, `#search`, `#timeline`, `#people`, `#chat` — all still work. (`#selftest` is
 reserved for the self-test.)

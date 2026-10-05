@@ -102,6 +102,35 @@ h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.02em}
   word-break:break-all}
 .rail .status .bad{color:var(--warn)}
 .railpane{flex:1;min-width:0;padding-left:24px}
+/* ---- the chat drawer ----
+   Over the grid rather than instead of it: an answer's photos appear behind
+   the drawer, so closing it leaves you holding the result. */
+/* Open and closed are a class, not the hidden attribute: a drawer has to slide,
+   and an element with display:none cannot animate. [hidden] keeps meaning
+   "really not there", which the suite checks across the whole page. */
+#chatDrawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);
+  z-index:45;background:var(--panel);border-left:1px solid var(--line);
+  box-shadow:-10px 0 34px rgba(0,0,0,.22);display:flex;flex-direction:column;
+  transform:translateX(100%);visibility:hidden;
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),visibility .22s}
+#chatDrawer.open{transform:translateX(0);visibility:visible}
+/* The drawer is fixed, so an open one sits ON TOP of whatever is under it --
+   including its own toggle at the right of the lens bar, and the footer. Make
+   room instead of overlapping: the page keeps all of its controls reachable. */
+@media (min-width:621px){
+  body.chat-open{padding-right:420px}
+  body.chat-open footer{right:420px}
+}
+#chatDrawer .chatBody{display:flex;flex-direction:column;flex:1;min-height:0;padding:14px 14px 14px}
+#chatDrawer .chatHead{display:flex;align-items:center;gap:8px;padding-bottom:10px;
+  border-bottom:1px solid var(--line);margin-bottom:10px;font-size:15px}
+#chatDrawer .grow{flex:1}
+#chatDrawer #chatLog{flex:1;min-height:0;overflow:auto}
+#chatToggle.on{background:color-mix(in srgb,var(--accent) 16%,transparent);
+  color:var(--accent);border-color:transparent;font-weight:600}
+@media (max-width:620px){ #chatDrawer{width:100vw} }
+@media (prefers-reduced-motion:reduce){ #chatDrawer{transition:none} }
+.grow{flex:1}
 .btn.sec.danger:not(:disabled){color:var(--err)}
 .btn.sec.danger:not(:disabled):hover{background:color-mix(in srgb,var(--err) 12%,transparent)}
 .railpane h2{margin:0 0 4px}
@@ -492,7 +521,6 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
       <button role="tab" data-lens="library" aria-selected="true">Grid</button>
       <button role="tab" data-lens="timeline" aria-selected="false">Timeline</button>
       <button role="tab" data-lens="people" aria-selected="false">People</button>
-      <button role="tab" data-lens="chat" aria-selected="false">Chat</button>
     </div>
     <label class="lensScopeWrap" id="lensScopeWrap">
       <span class="vh">Which photos</span>
@@ -504,6 +532,9 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
     </label>
     <button class="btn sec" id="sgMoreBtn" type="button" aria-expanded="false"
             aria-controls="sgMore">Filters</button>
+    <span class="grow"></span>
+    <button class="btn sec" id="chatToggle" type="button" aria-expanded="false"
+            aria-controls="chatDrawer" title="Ask about your photos (C)">Chat</button>
     <span class="hint" id="sgFilterCount" style="margin:0"></span>
   </div>
 
@@ -660,30 +691,6 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
     </div>
   </section>
 
-  <section id="tab-chat" hidden>
-    <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 190px);min-height:380px">
-      <h2 style="display:flex;align-items:center;gap:10px">Chat
-        <span id="modeBadge" class="pill" hidden></span>
-        <span class="spacer"></span>
-        <button class="btn sec" id="chatSave" style="padding:4px 10px;font-size:12px">Save</button>
-        <button class="btn sec" id="chatClear" style="padding:4px 10px;font-size:12px">Clear</button>
-      </h2>
-      <div id="chatLog"></div>
-      <div id="chatExamples" class="hint" style="margin:8px 0">
-        Try: <i>photos of children in a forest</i> · <i>anything from summer 2021</i> ·
-        <i>show me the screenshots</i> · <i>where was the boat photo taken?</i>
-      </div>
-      <div class="row" style="margin-top:6px;align-items:flex-end">
-        <div style="flex:1 1 320px">
-          <textarea id="chatInput" rows="2" spellcheck="true"
-            placeholder="Ask about your photos… (Enter to send, Shift+Enter for a new line)"
-            style="min-height:44px"></textarea>
-        </div>
-        <button class="btn" id="chatSend">Send</button>
-        <button class="btn sec" id="chatStop" hidden>Stop</button>
-      </div>
-    </div>
-  </section>
 
   <section id="tab-library" hidden>
     <div id="galBar" class="tlbar">
@@ -937,6 +944,38 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
     </div>
   </section>
 </main>
+
+  <!-- Chat is a drawer, not a room you leave. Its answers land in the grid
+       behind it, so closing it keeps the result you can then look through,
+       select from, or regroup by date. -->
+  <aside id="chatDrawer" aria-label="Chat">
+    <div class="chatBody">
+      <div class="chatHead">
+        <b>Chat</b>
+        <span id="modeBadge" class="pill" hidden></span>
+        <span class="grow"></span>
+        <button class="btn sec" id="chatSave" style="padding:4px 10px;font-size:12px">Save</button>
+        <button class="btn sec" id="chatClear" style="padding:4px 10px;font-size:12px">Clear</button>
+        <button class="btn sec" id="chatClose" style="padding:4px 10px;font-size:12px"
+                title="Close (Esc)" aria-label="Close chat">&#10005;</button>
+      </div>
+      <div id="chatLog"></div>
+      <div id="chatExamples" class="hint" style="margin:8px 0">
+        Try: <i>photos of children in a forest</i> · <i>anything from summer 2021</i> ·
+        <i>show me the screenshots</i> · <i>where was the boat photo taken?</i>
+      </div>
+      <div class="row" style="margin-top:6px;align-items:flex-end">
+        <div style="flex:1 1 320px">
+          <textarea id="chatInput" rows="2" spellcheck="true"
+            placeholder="Ask about your photos… (Enter to send, Shift+Enter for a new line)"
+            style="min-height:44px"></textarea>
+        </div>
+        <button class="btn" id="chatSend">Send</button>
+        <button class="btn sec" id="chatStop" hidden>Stop</button>
+      </div>
+    </div>
+  </aside>
+
 
 <div id="lightbox" hidden>
   <div class="lbBox">
