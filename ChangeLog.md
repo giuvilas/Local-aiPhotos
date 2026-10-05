@@ -15,9 +15,11 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
+- [0.6.33 (2026-10-05)](#0633-2026-10-05)
+  - [Fixed](#fixed)
 - [0.6.32 (2026-10-05)](#0632-2026-10-05)
   - [Changed](#changed)
-  - [Fixed](#fixed)
+  - [Fixed](#fixed-1)
   - [Added](#added)
   - [Milestone](#milestone)
 - [0.6.31 (2026-10-05)](#0631-2026-10-05)
@@ -25,16 +27,16 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
   - [Changed](#changed-1)
 - [0.6.30 (2026-10-05)](#0630-2026-10-05)
   - [Changed](#changed-2)
-  - [Fixed](#fixed-1)
+  - [Fixed](#fixed-2)
 - [0.6.29 (2026-10-05)](#0629-2026-10-05)
   - [Changed](#changed-3)
-  - [Fixed](#fixed-2)
+  - [Fixed](#fixed-3)
   - [Added](#added-2)
 - [0.6.28 (2026-10-04)](#0628-2026-10-04)
   - [Changed](#changed-4)
-  - [Fixed](#fixed-3)
-- [0.6.27 (2026-10-04)](#0627-2026-10-04)
   - [Fixed](#fixed-4)
+- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Fixed](#fixed-5)
   - [Removed](#removed)
   - [Documentation](#documentation)
 - [0.6.26 (2026-10-04)](#0626-2026-10-04)
@@ -43,17 +45,17 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
   - [Removed](#removed-1)
 - [0.6.25 (2026-10-04)](#0625-2026-10-04)
   - [Changed](#changed-6)
-  - [Fixed](#fixed-5)
+  - [Fixed](#fixed-6)
 - [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-7)
-  - [Fixed](#fixed-6)
-- [0.6.23 (2026-10-04)](#0623-2026-10-04)
   - [Fixed](#fixed-7)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+  - [Fixed](#fixed-8)
   - [Added](#added-4)
 - [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-5)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
-  - [Fixed](#fixed-8)
+  - [Fixed](#fixed-9)
   - [Changed](#changed-8)
 - [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-9)
@@ -62,11 +64,11 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
   - [Added](#added-6)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
-  - [Fixed](#fixed-9)
+  - [Fixed](#fixed-10)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-7)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
-  - [Fixed](#fixed-10)
+  - [Fixed](#fixed-11)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
   - [Changed](#changed-11)
 - [0.6.13 (2026-10-02)](#0613-2026-10-02)
@@ -82,9 +84,9 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
   - [Added](#added-10)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
-  - [Fixed](#fixed-11)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-12)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-13)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-11)
 - [0.6.4 (2026-10-02)](#064-2026-10-02)
@@ -104,7 +106,7 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-19)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-13)
+  - [Fixed](#fixed-14)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
   - [Added](#added-17)
   - [Changed](#changed-20)
@@ -113,22 +115,48 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-18)
   - [Changed](#changed-22)
-  - [Fixed](#fixed-14)
+  - [Fixed](#fixed-15)
 - [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-19)
   - [Changed](#changed-23)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-20)
   - [Changed](#changed-24)
-  - [Fixed](#fixed-15)
+  - [Fixed](#fixed-16)
 - [0.2.0 (2026-09-29)](#020-2026-09-29)
   - [Added](#added-21)
   - [Changed](#changed-25)
-  - [Fixed](#fixed-16)
+  - [Fixed](#fixed-17)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
   - [Added](#added-22)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.33 (2026-10-05)
+
+**Summary:** the stuck folder chooser is now unreachable, instead of merely explained.
+
+### Fixed
+
+- **Pressing the folder button twice no longer jams every picker on the page.** Chrome allows
+  one file dialog per document, and refusing a second one poisons *every* picker for the life of
+  that page — only a reload clears it, and nothing the page does can reset it. Asking for a
+  folder on a sleeping SMB share can take as long as the share takes to answer, during which
+  Chrome shows nothing at all, so pressing again is the natural thing to do. **That second press
+  no longer reaches Chrome.** While a request is outstanding, pressing again says how long it has
+  been waiting, that pressing again cannot help, and points at dragging the folder from Finder,
+  which needs no dialog.
+
+  Previous versions detected the jam and explained it. Explaining a state the user can still walk
+  into is not a fix.
+- **Every picker in the app goes through the guarded path.** *Move the index* still called
+  Chrome directly and could jam the dialog on its own; a test now reads the app's own source and
+  fails if any raw call comes back.
+- The "no chooser appeared" message said the dialog had been refused. Usually it has not — it is
+  still opening, on a share that has not woken up. It says that, and says not to press again.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.32 (2026-10-05)
 

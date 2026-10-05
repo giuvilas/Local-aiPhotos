@@ -628,9 +628,41 @@ async function selfTest(){
            !note.hidden && /chooser/i.test(note.textContent));
         await new Promise(r => setTimeout(r, 120));
         ok("a chooser that never appears is explained at the button",
-           !note.hidden && /No folder chooser appeared/.test(note.textContent));
+           !note.hidden && /No folder chooser yet/.test(note.textContent));
         ok("and offers the reload that is the only real remedy",
            [...note.querySelectorAll("button")].some(b => /Reload/.test(b.textContent)));
+
+        /* THE fix. Chrome allows one dialog per document, and refusing a second
+           one poisons every picker on the page for the life of that page. A
+           chooser that is slow to appear -- a folder on a sleeping NAS -- makes
+           pressing again the natural thing to do, so the second press must not
+           reach Chrome at all. This is the only way anyone was getting stuck. */
+        {
+          let calls = 0;
+          window.showDirectoryPicker = () => { calls++; return new Promise(() => {}); };
+          $("#btnIndexDir").click();
+          await new Promise(r => setTimeout(r, 10));
+          eq("pressing again while one is outstanding does not ask Chrome again", calls, 0);
+          ok("it says how long it has been waiting",
+             /Still asking/.test(note.textContent) && /\ds\./.test(note.textContent),
+             note.textContent.slice(0, 80));
+          ok("and says pressing again cannot help",
+             /cannot help/.test(note.textContent));
+          ok("while pointing at the route that needs no dialog",
+             /[Dd]rag/.test(note.textContent));
+          PICKER_BUSY = 0;              // a reload is what really clears it
+        }
+        /* Every folder picker in the app must go through the guard: one raw
+           call left anywhere can still jam the single dialog Chrome allows,
+           and then nothing on the page can open a folder until a reload. */
+        {
+          const all = (document.querySelector("script:not([src])") || {}).textContent || "";
+          /* The app's own code, not the suite's: the build marks each file. */
+          const cut = all.indexOf("90-selftest.js ====");
+          const app = cut > 0 ? all.slice(0, cut) : all;
+          const raw = [...app.matchAll(/await pickDirectory\(/g)].length;
+          eq("only the guarded wrapper calls the picker directly", raw, 1);
+        }
 
         window.showDirectoryPicker = () => Promise.reject(new Error(
           "Failed to execute 'showDirectoryPicker' on 'Window': File picker already active."));

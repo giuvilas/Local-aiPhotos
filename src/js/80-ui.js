@@ -918,12 +918,18 @@ $("#btnIndexMove").onclick = async () => {
   if (RUN.active){ toast("Wait for the scan to finish before moving the index."); return; }
   if (!(await ensureIndexConnected()) || !(await ensureConnected("the move"))) return;
   let dest;
-  try { await ensureIndex(null, { write:false }); dest = await pickDirectory(); }
+  /* Through the same guarded path as every other picker: a raw call here could
+     still jam the one dialog Chrome allows, and then nothing on the page could
+     open a folder again until a reload. */
+  try {
+    await ensureIndex(null, { write:false });
+    dest = await pickDirectoryVisible($("#maintOut"), { id:"psIndex", startIn:"documents" });
+  }
   catch (e){
-    if (e.name === "AbortError") return;
-    if (isPickerStuck(e)){ offerPickerReset(); return; }
+    if (isPickerStuck(e)){ offerPickerReset($("#maintOut")); return; }
     toast(humanError(e)); return;
   }
+  if (!dest) return;
   const host = $("#maintOut"); resetChecks(host);
   let cur = null;
   try { cur = await indexParent(); } catch {}

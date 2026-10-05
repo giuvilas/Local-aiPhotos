@@ -35,6 +35,7 @@ runtime, `qwen3.5-9b-mlx` (4-bit), and `text-embedding-nomic-embed-text-v1.5`.
 - [19. Hiding a photo is not deleting it](#19-hiding-a-photo-is-not-deleting-it)
 - [20. Things outlive the list that created them](#20-things-outlive-the-list-that-created-them)
 - [21. A setting can be wired correctly and still be undone downstream](#21-a-setting-can-be-wired-correctly-and-still-be-undone-downstream)
+- [22. Explaining a bad state is not the same as preventing it](#22-explaining-a-bad-state-is-not-the-same-as-preventing-it)
 - [Reproducing any of this](#reproducing-any-of-this)
 <!-- index:end -->
 
@@ -741,6 +742,39 @@ forces a fall back to the original — and the suite asserts the pass-through, m
 
 A corollary: **a provenance field that can be wrong is worse than no provenance field**,
 because it is trusted exactly when something has already gone wrong and judgement is poorest.
+
+[↑ Back to Index](#index)
+
+---
+
+## 22. Explaining a bad state is not the same as preventing it
+
+Chrome allows **one file dialog per document**. A second `showDirectoryPicker()` while the first
+is unsettled is refused with *"File picker already active"* — and from then on every picker in
+that document is refused, for the life of the page. Only a reload clears it; nothing the page
+can do resets it.
+
+Asking for a folder on a **sleeping SMB share** takes as long as the share takes to answer, and
+Chrome draws nothing while it waits. So the button looks dead, and pressing it again is the
+obvious thing to do. That press is what causes the jam.
+
+The first fix detected the jam and explained it well: what had happened, that a reload clears
+it, that dragging a folder from Finder needs no dialog. The explanation was accurate, visible,
+and placed beside the button that had failed. **It was still not a fix** — the user kept
+reaching the state, because nothing stopped them.
+
+The actual fix is three lines: while a request is outstanding, the second press never reaches
+Chrome. It shows how long the first has been waiting and says that pressing again cannot help.
+The state is then unreachable by the only route anyone was reaching it by.
+
+**The lesson is about where the effort went.** Two releases of careful diagnosis, messaging and
+tests, all describing a state that should not have been reachable. When a failure has a known
+trigger the page controls, guard the trigger; a good error message about it is what you write
+*afterwards*, for the cases you could not guard.
+
+A corollary: *one* raw call left anywhere re-opens the hole, because the resource is the
+document's, not the caller's. The suite reads the app's own source and fails if any call bypasses
+the guard.
 
 [↑ Back to Index](#index)
 
