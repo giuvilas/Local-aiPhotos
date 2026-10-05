@@ -1083,7 +1083,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.34";
+const APP_VERSION = "0.6.35";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -3149,8 +3149,10 @@ async function loadRecords(onProgress){
        seen -- and the next flush wrote those foreign records INTO it. */
     IDX.records = new Map();
     IDX.loaded = true;
+    IDX.hasLog = false;        // there is no record file here at all
     return 0;
   }
+  IDX.hasLog = true;
   const file = await fh.getFile();
   const total = file.size || 1;
   const rd = file.stream().pipeThrough(new TextDecoderStream()).getReader();
@@ -7706,7 +7708,7 @@ function renderTimeline(){
   if (!TL.days.length){
     body.append(Object.assign(el("span", "dim"), { textContent: TL.total
       ? "No photos carry a date yet."
-      : "Nothing indexed yet — run a scan first." }));
+      : emptyIndexNote() }));
     renderTimelineBar();
     return;
   }
@@ -8187,6 +8189,24 @@ function galReveal(i){
    one. A search started from another tab needs the index open before it can
    look anything up. */
 let libJob = null;
+/* "Nothing indexed yet" is true of an empty index and of the WRONG index, and
+   those need opposite responses. Say which folder was opened and whether it
+   held a record file at all: picking an index location that has no
+   .photoindex in it creates an empty one, which then reports exactly the same
+   thing as a library waiting for its first scan. */
+function indexWhereName(){
+  return (S.indexMode === "custom" && S.indexDirHandle) ? S.indexDirHandle.name
+       : (S.dirHandle ? S.dirHandle.name : null);
+}
+function emptyIndexNote(){
+  const where = indexWhereName();
+  if (!where) return "Nothing indexed yet — run a scan first.";
+  if (IDX.hasLog === false)
+    return "No index in " + where + "/.photoindex/ — it has no records file, so this is "
+         + "either a new location or not the folder you meant. Check “Where to save the "
+         + "index” in Settings, or run a scan to start one here.";
+  return "Nothing indexed yet in " + where + "/.photoindex/ — run a scan first.";
+}
 function onLibraryShown(force){
   if (!libJob) libJob = libLoad(force).finally(() => { libJob = null; });
   return libJob;
@@ -8206,7 +8226,7 @@ async function libLoad(force){
     galBuild();
     GAL.built = IDX.records.size;
     galMessage(GAL.list.length ? "" : (GAL.view === "search" ? "No photos match this search."
-                                                              : "Nothing indexed yet — run a scan first."));
+                                                              : emptyIndexNote()));
     galBar();
     GAL.cell = 0;                       // a fresh list has no scroll anchor
     galClear();
@@ -11120,7 +11140,7 @@ function clearSearch(){
   }
   if (GAL.view === "search") GAL.view = "all";
   galBuild(); galBar(); galClear(); galLayout();
-  galMessage(GAL.list.length ? "" : "Nothing indexed yet — run a scan first.");
+  galMessage(GAL.list.length ? "" : emptyIndexNote());
 }
 function galDropChip(i){ GAL.chips.splice(i, 1); sgRenderChips(); runSearch(); }
 function galDropText(i){ GAL.texts.splice(i, 1); sgRenderChips(); runSearch(); }
@@ -11883,9 +11903,14 @@ async function selfTest(){
     ok("photo folder still holds its own earlier index", strayInPhotos);
     IDX.loaded = false; await loadRecords();
     eq("a fresh index location starts empty", IDX.records.size, 0);
+    /* An empty index and the WRONG folder both report no photos, and choosing
+       a location with no .photoindex CREATES an empty one -- so the absence of
+       a record file is the only thing that tells them apart. */
+    eq("and is known to hold no record file at all", IDX.hasLog, false);
     S.indexMode = savedMode; S.indexDirHandle = savedIdxDir;
     await ensureIndex(); IDX.loaded = false; await loadRecords(); await loadVectors();
     eq("switching back restores the original index", IDX.records.size, 4);
+    eq("which does have one", IDX.hasLog, true);
     await rmAll(idxHome);
 
     /* ---- scan order decides what exists on day one ---- */
@@ -14126,6 +14151,42 @@ async function selfTest(){
         }
         if (wasTheme) root.setAttribute("data-theme", wasTheme);
         else root.removeAttribute("data-theme");
+      }
+
+      /* ---- an empty grid has to say WHICH index it looked in ----
+         "Nothing indexed yet" is equally true of a library waiting for its
+         first scan and of the wrong folder entirely -- and choosing an index
+         location with no .photoindex in it CREATES an empty one, so the two
+         are indistinguishable at exactly the moment they need opposite
+         responses. */
+      {
+        const keepMode = S.indexMode, keepDir = S.indexDirHandle, keepLog = IDX.hasLog;
+        try {
+          S.indexMode = "custom";
+          S.indexDirHandle = { name:"PhotoSearch-index", kind:"directory" };
+          IDX.hasLog = true;
+          let m = emptyIndexNote();
+          ok("an empty index names the folder it opened", /PhotoSearch-index/.test(m), m);
+          ok("and says a scan is what fills it", /scan/i.test(m), m);
+
+          IDX.hasLog = false;
+          m = emptyIndexNote();
+          ok("a folder with no records file says so", /no records file/i.test(m), m);
+          ok("and raises the likelier cause: the wrong folder",
+             /not the folder you meant/i.test(m), m);
+          ok("naming it, so it can be compared with what Settings shows",
+             /PhotoSearch-index/.test(m), m);
+
+          S.indexMode = "folder"; S.indexDirHandle = null;
+          const noFolder = S.dirHandle;
+          S.dirHandle = null;
+          m = emptyIndexNote();
+          ok("with nothing chosen at all it stays the plain message",
+             !/\/\.photoindex/.test(m), m);
+          S.dirHandle = noFolder;
+        } finally {
+          S.indexMode = keepMode; S.indexDirHandle = keepDir; IDX.hasLog = keepLog;
+        }
       }
 
       /* ---- RS-7: anything by name ----

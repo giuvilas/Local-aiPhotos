@@ -178,7 +178,7 @@ function renderTimeline(){
   if (!TL.days.length){
     body.append(Object.assign(el("span", "dim"), { textContent: TL.total
       ? "No photos carry a date yet."
-      : "Nothing indexed yet — run a scan first." }));
+      : emptyIndexNote() }));
     renderTimelineBar();
     return;
   }

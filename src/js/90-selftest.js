@@ -395,9 +395,14 @@ async function selfTest(){
     ok("photo folder still holds its own earlier index", strayInPhotos);
     IDX.loaded = false; await loadRecords();
     eq("a fresh index location starts empty", IDX.records.size, 0);
+    /* An empty index and the WRONG folder both report no photos, and choosing
+       a location with no .photoindex CREATES an empty one -- so the absence of
+       a record file is the only thing that tells them apart. */
+    eq("and is known to hold no record file at all", IDX.hasLog, false);
     S.indexMode = savedMode; S.indexDirHandle = savedIdxDir;
     await ensureIndex(); IDX.loaded = false; await loadRecords(); await loadVectors();
     eq("switching back restores the original index", IDX.records.size, 4);
+    eq("which does have one", IDX.hasLog, true);
     await rmAll(idxHome);
 
     /* ---- scan order decides what exists on day one ---- */
@@ -2638,6 +2643,42 @@ async function selfTest(){
         }
         if (wasTheme) root.setAttribute("data-theme", wasTheme);
         else root.removeAttribute("data-theme");
+      }
+
+      /* ---- an empty grid has to say WHICH index it looked in ----
+         "Nothing indexed yet" is equally true of a library waiting for its
+         first scan and of the wrong folder entirely -- and choosing an index
+         location with no .photoindex in it CREATES an empty one, so the two
+         are indistinguishable at exactly the moment they need opposite
+         responses. */
+      {
+        const keepMode = S.indexMode, keepDir = S.indexDirHandle, keepLog = IDX.hasLog;
+        try {
+          S.indexMode = "custom";
+          S.indexDirHandle = { name:"PhotoSearch-index", kind:"directory" };
+          IDX.hasLog = true;
+          let m = emptyIndexNote();
+          ok("an empty index names the folder it opened", /PhotoSearch-index/.test(m), m);
+          ok("and says a scan is what fills it", /scan/i.test(m), m);
+
+          IDX.hasLog = false;
+          m = emptyIndexNote();
+          ok("a folder with no records file says so", /no records file/i.test(m), m);
+          ok("and raises the likelier cause: the wrong folder",
+             /not the folder you meant/i.test(m), m);
+          ok("naming it, so it can be compared with what Settings shows",
+             /PhotoSearch-index/.test(m), m);
+
+          S.indexMode = "folder"; S.indexDirHandle = null;
+          const noFolder = S.dirHandle;
+          S.dirHandle = null;
+          m = emptyIndexNote();
+          ok("with nothing chosen at all it stays the plain message",
+             !/\/\.photoindex/.test(m), m);
+          S.dirHandle = noFolder;
+        } finally {
+          S.indexMode = keepMode; S.indexDirHandle = keepDir; IDX.hasLog = keepLog;
+        }
       }
 
       /* ---- RS-7: anything by name ----

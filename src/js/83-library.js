@@ -416,6 +416,24 @@ function galReveal(i){
    one. A search started from another tab needs the index open before it can
    look anything up. */
 let libJob = null;
+/* "Nothing indexed yet" is true of an empty index and of the WRONG index, and
+   those need opposite responses. Say which folder was opened and whether it
+   held a record file at all: picking an index location that has no
+   .photoindex in it creates an empty one, which then reports exactly the same
+   thing as a library waiting for its first scan. */
+function indexWhereName(){
+  return (S.indexMode === "custom" && S.indexDirHandle) ? S.indexDirHandle.name
+       : (S.dirHandle ? S.dirHandle.name : null);
+}
+function emptyIndexNote(){
+  const where = indexWhereName();
+  if (!where) return "Nothing indexed yet — run a scan first.";
+  if (IDX.hasLog === false)
+    return "No index in " + where + "/.photoindex/ — it has no records file, so this is "
+         + "either a new location or not the folder you meant. Check “Where to save the "
+         + "index” in Settings, or run a scan to start one here.";
+  return "Nothing indexed yet in " + where + "/.photoindex/ — run a scan first.";
+}
 function onLibraryShown(force){
   if (!libJob) libJob = libLoad(force).finally(() => { libJob = null; });
   return libJob;
@@ -435,7 +453,7 @@ async function libLoad(force){
     galBuild();
     GAL.built = IDX.records.size;
     galMessage(GAL.list.length ? "" : (GAL.view === "search" ? "No photos match this search."
-                                                              : "Nothing indexed yet — run a scan first."));
+                                                              : emptyIndexNote()));
     galBar();
     GAL.cell = 0;                       // a fresh list has no scroll anchor
     galClear();

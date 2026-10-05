@@ -197,8 +197,10 @@ async function loadRecords(onProgress){
        seen -- and the next flush wrote those foreign records INTO it. */
     IDX.records = new Map();
     IDX.loaded = true;
+    IDX.hasLog = false;        // there is no record file here at all
     return 0;
   }
+  IDX.hasLog = true;
   const file = await fh.getFile();
   const total = file.size || 1;
   const rd = file.stream().pipeThrough(new TextDecoderStream()).getReader();

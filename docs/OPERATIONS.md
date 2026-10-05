@@ -33,6 +33,7 @@ it with your own, as explained in [Finding your index](#finding-your-index).
 - [Settings that matter](#settings-that-matter)
   - [Library: rotating, removing and restoring photos](#library-rotating-removing-and-restoring-photos)
   - [Faces](#faces)
+  - ["Nothing indexed yet" when you know there are photos](#nothing-indexed-yet-when-you-know-there-are-photos)
   - [Picking a different photo folder](#picking-a-different-photo-folder)
 - [Checklist after any interruption](#checklist-after-any-interruption)
 - [People/search update — 1 October 2026](#peoplesearch-update--1-october-2026)
@@ -364,6 +365,22 @@ inferred from the setting.
 
 Names you assign are searchable immediately, in the search box and in chat, where
 `list_people` tells the model which names exist.
+
+### "Nothing indexed yet" when you know there are photos
+
+The message names the folder it opened, so compare it with **Scan**'s rail or **Settings →
+Library**. Three things produce an empty grid:
+
+| what it says | what happened |
+|---|---|
+| *Nothing indexed yet in **X**/.photoindex/* | that index is real but holds no records — a scan has not run against it |
+| *No index in **X**/.photoindex/ — it has no records file* | almost always the wrong folder. Choosing an index location creates `.photoindex` there if it is missing, so an empty one appears wherever you point |
+| *Connect a folder in Settings first* | no photo folder and no index folder is open — usually a reload, which drops Chrome's folder permission |
+
+The second is the one that catches people. Picking the *parent* of the folder you meant, or
+letting the macOS panel return a highlighted subfolder, gives you a brand-new empty index rather
+than an error. Nothing is lost: point *Where to save the index* back at the right folder and the
+records are there again.
 
 ### Picking a different photo folder
 

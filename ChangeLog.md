@@ -15,14 +15,16 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 
 ## Index
 <!-- index:start -->
-- [0.6.34 (2026-10-05)](#0634-2026-10-05)
+- [0.6.35 (2026-10-05)](#0635-2026-10-05)
   - [Fixed](#fixed)
+- [0.6.34 (2026-10-05)](#0634-2026-10-05)
+  - [Fixed](#fixed-1)
   - [Changed](#changed)
 - [0.6.33 (2026-10-05)](#0633-2026-10-05)
-  - [Fixed](#fixed-1)
+  - [Fixed](#fixed-2)
 - [0.6.32 (2026-10-05)](#0632-2026-10-05)
   - [Changed](#changed-1)
-  - [Fixed](#fixed-2)
+  - [Fixed](#fixed-3)
   - [Added](#added)
   - [Milestone](#milestone)
 - [0.6.31 (2026-10-05)](#0631-2026-10-05)
@@ -30,16 +32,16 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
   - [Changed](#changed-2)
 - [0.6.30 (2026-10-05)](#0630-2026-10-05)
   - [Changed](#changed-3)
-  - [Fixed](#fixed-3)
+  - [Fixed](#fixed-4)
 - [0.6.29 (2026-10-05)](#0629-2026-10-05)
   - [Changed](#changed-4)
-  - [Fixed](#fixed-4)
+  - [Fixed](#fixed-5)
   - [Added](#added-2)
 - [0.6.28 (2026-10-04)](#0628-2026-10-04)
   - [Changed](#changed-5)
-  - [Fixed](#fixed-5)
-- [0.6.27 (2026-10-04)](#0627-2026-10-04)
   - [Fixed](#fixed-6)
+- [0.6.27 (2026-10-04)](#0627-2026-10-04)
+  - [Fixed](#fixed-7)
   - [Removed](#removed)
   - [Documentation](#documentation)
 - [0.6.26 (2026-10-04)](#0626-2026-10-04)
@@ -48,17 +50,17 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
   - [Removed](#removed-1)
 - [0.6.25 (2026-10-04)](#0625-2026-10-04)
   - [Changed](#changed-7)
-  - [Fixed](#fixed-7)
+  - [Fixed](#fixed-8)
 - [0.6.24 (2026-10-04)](#0624-2026-10-04)
   - [Changed](#changed-8)
-  - [Fixed](#fixed-8)
-- [0.6.23 (2026-10-04)](#0623-2026-10-04)
   - [Fixed](#fixed-9)
+- [0.6.23 (2026-10-04)](#0623-2026-10-04)
+  - [Fixed](#fixed-10)
   - [Added](#added-4)
 - [0.6.22 (2026-10-03)](#0622-2026-10-03)
   - [Added](#added-5)
 - [0.6.21 (2026-10-03)](#0621-2026-10-03)
-  - [Fixed](#fixed-10)
+  - [Fixed](#fixed-11)
   - [Changed](#changed-9)
 - [0.6.20 (2026-10-02)](#0620-2026-10-02)
   - [Changed](#changed-10)
@@ -67,11 +69,11 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.18 (2026-10-02)](#0618-2026-10-02)
   - [Added](#added-6)
 - [0.6.17 (2026-10-02)](#0617-2026-10-02)
-  - [Fixed](#fixed-11)
+  - [Fixed](#fixed-12)
 - [0.6.16 (2026-10-02)](#0616-2026-10-02)
   - [Added](#added-7)
 - [0.6.15 (2026-10-02)](#0615-2026-10-02)
-  - [Fixed](#fixed-12)
+  - [Fixed](#fixed-13)
 - [0.6.14 (2026-10-02)](#0614-2026-10-02)
   - [Changed](#changed-12)
 - [0.6.13 (2026-10-02)](#0613-2026-10-02)
@@ -87,9 +89,9 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.6.8 (2026-10-02)](#068-2026-10-02)
   - [Added](#added-10)
 - [0.6.7 (2026-10-02)](#067-2026-10-02)
-  - [Fixed](#fixed-13)
-- [0.6.6 (2026-10-02)](#066-2026-10-02)
   - [Fixed](#fixed-14)
+- [0.6.6 (2026-10-02)](#066-2026-10-02)
+  - [Fixed](#fixed-15)
 - [0.6.5 (2026-10-02)](#065-2026-10-02)
   - [Added](#added-11)
 - [0.6.4 (2026-10-02)](#064-2026-10-02)
@@ -109,7 +111,7 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.4 (2026-10-01)](#054-2026-10-01)
   - [Changed](#changed-20)
 - [0.5.3 (2026-10-01)](#053-2026-10-01)
-  - [Fixed](#fixed-15)
+  - [Fixed](#fixed-16)
 - [0.5.2 (2026-10-01)](#052-2026-10-01)
   - [Added](#added-17)
   - [Changed](#changed-21)
@@ -118,22 +120,44 @@ The current version is shown in the app's footer and is defined as `APP_VERSION`
 - [0.5.0 (2026-10-01)](#050-2026-10-01)
   - [Added](#added-18)
   - [Changed](#changed-23)
-  - [Fixed](#fixed-16)
+  - [Fixed](#fixed-17)
 - [0.4.0 (2026-10-01)](#040-2026-10-01)
   - [Added](#added-19)
   - [Changed](#changed-24)
 - [0.3.0 (2026-09-30)](#030-2026-09-30)
   - [Added](#added-20)
   - [Changed](#changed-25)
-  - [Fixed](#fixed-17)
+  - [Fixed](#fixed-18)
 - [0.2.0 (2026-09-29)](#020-2026-09-29)
   - [Added](#added-21)
   - [Changed](#changed-26)
-  - [Fixed](#fixed-18)
+  - [Fixed](#fixed-19)
 - [0.1.0 (2026-09-23)](#010-2026-09-23)
   - [Added](#added-22)
   - [Fixed (in the days that followed, before 0.2.0)](#fixed-in-the-days-that-followed-before-020)
 <!-- index:end -->
+
+## 0.6.35 (2026-10-05)
+
+**Summary:** *"Nothing indexed yet"* now says which index it opened, because that message was
+equally true of the wrong folder.
+
+### Fixed
+
+- **An empty grid names the index it looked in.** *"Nothing indexed yet — run a scan first"* is
+  true of a library waiting for its first scan **and** of the wrong folder entirely — and
+  choosing an index location that has no `.photoindex` in it **creates an empty one**, so the
+  two were indistinguishable at exactly the moment they need opposite responses. The message now
+  reads *"Nothing indexed yet in PhotoSearch-index/.photoindex/"*, which can be compared against
+  what Settings shows.
+- **A folder with no records file says so**, and raises the likelier cause: *"it has no records
+  file, so this is either a new location or not the folder you meant."* Running a scan is the
+  right answer for one of those and the wrong answer for the other.
+- The Grid, the Timeline and a cleared search all used their own copy of the old message. They
+  share one.
+
+[↑ Back to Index](#index)
+
 
 ## 0.6.34 (2026-10-05)
 

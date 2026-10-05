@@ -386,7 +386,7 @@ function clearSearch(){
   }
   if (GAL.view === "search") GAL.view = "all";
   galBuild(); galBar(); galClear(); galLayout();
-  galMessage(GAL.list.length ? "" : "Nothing indexed yet — run a scan first.");
+  galMessage(GAL.list.length ? "" : emptyIndexNote());
 }
 function galDropChip(i){ GAL.chips.splice(i, 1); sgRenderChips(); runSearch(); }
 function galDropText(i){ GAL.texts.splice(i, 1); sgRenderChips(); runSearch(); }
