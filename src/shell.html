@@ -649,7 +649,8 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
               every scan, are in Settings.</span>
           </div>
           <div class="row" style="margin-top:12px">
-                <span class="hint" style="margin:0">Copies the index somewhere else and switches to
+            <button class="btn sec" id="btnIndexMove">Move the index&hellip;</button>
+            <span class="hint" style="margin:0">Copies the index somewhere else and switches to
               it, leaving the original where it is until you are satisfied.</span>
           </div>
         </div>
@@ -741,23 +742,34 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
   </section>
 
   <section id="tab-settings">
+    <div class="railwrap">
+      <nav class="rail" id="settingsRail" role="tablist" aria-label="Settings sections">
+        <h4>Settings</h4>
+        <button role="tab" data-sec="conn" aria-selected="true">Connection</button>
+        <button role="tab" data-sec="lib" aria-selected="false">Library</button>
+        <button role="tab" data-sec="scanning" aria-selected="false">Scanning</button>
+        <button role="tab" data-sec="privacy" aria-selected="false">Privacy &amp; data</button>
+        <button role="tab" data-sec="diag" aria-selected="false">Diagnostics</button>
+        <div class="status" id="settingsStatus"></div>
+      </nav>
+      <div class="railpane">
+      <div id="settingsSec-conn">
+        <h2 style="margin:0 0 4px">Connection</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">Any OpenAI-compatible local server — LM Studio, Ollama, llama.cpp. Nothing is sent anywhere else.</p>
     <div class="card">
       <h2>LM Studio connection</h2>
       <div class="row">
         <div style="flex:2 1 300px"><label for="baseUrl">Server URL</label>
           <input type="text" id="baseUrl" value="http://localhost:1234" spellcheck="false"></div>
         <button class="btn" id="btnTest">Test connection</button>
-        <button class="btn sec" id="btnThink">Probe thinking-off</button>
       </div>
       <div class="hint">Needs LM Studio's <b>Enable CORS</b>, or <code>lms server start --cors</code>.</div>
       <div id="diag"></div>
     </div>
-
     <div class="card">
       <h2>Models</h2>
       <div id="models"><span class="dim">Run "Test connection" to detect models.</span></div>
     </div>
-
     <div class="card">
       <h2>Model roles</h2>
       <div class="row">
@@ -767,7 +779,10 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
       </div>
       <div class="hint">Models load on demand. They are never all required at once.</div>
     </div>
-
+      </div>
+      <div id="settingsSec-lib" hidden>
+        <h2 style="margin:0 0 4px">Library</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">Where your photos are, and where the index that describes them is kept. The two are independent.</p>
     <div class="card">
       <h2>Photo folder &amp; index</h2>
       <div class="row">
@@ -788,7 +803,6 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           </select></div>
         <button class="btn" id="btnIndexDir">Choose where to save the DB…</button>
         <button class="btn sec" id="btnIndexReveal">What's in it?</button>
-        <button class="btn sec" id="btnIndexMove">Move the index&hellip;</button>
       </div>
       <div id="idxNow" class="idxNow"></div>
       <div id="idxPickNote" class="note" hidden></div>
@@ -822,7 +836,10 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         large library folder by folder without re-walking all of it.</div>
       <div id="fsOut"></div>
     </div>
-
+      </div>
+      <div id="settingsSec-scanning" hidden>
+        <h2 style="margin:0 0 4px">Scanning</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">How hard the machine works, and how dates and places are decided.</p>
     <div class="card">
       <h2>Scan settings</h2>
       <div class="row">
@@ -838,7 +855,6 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
       <div class="hint">File-stat concurrency matters most on a NAS: reading size and modified
         time is one round trip per file, so raise it for SMB shares.</div>
     </div>
-
     <div class="card">
       <h2>Dates, places and events</h2>
       <div class="row">
@@ -859,7 +875,26 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           was taken. An override wins over every other source. Re-scan those files to apply it.</div>
       </div>
     </div>
-
+      </div>
+      <div id="settingsSec-privacy" hidden>
+        <h2 style="margin:0 0 4px">Privacy &amp; data</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">Everything stays on this machine. No photo, caption or face is uploaded, and no online service is contacted — not for geocoding, not for recognition.</p>
+    <div class="card">
+      <h2>Faces</h2>
+      <div class="hint" style="margin-top:0">Faces are grouped by <b>how alike they look</b>,
+        and nothing else. Age, gender, emotion and ethnicity are never inferred and never
+        stored &mdash; a test asserts those fields cannot reach the index. Names come from you;
+        no model ever supplies one.</div>
+      <div class="hint">What is kept: a numeric fingerprint per face, a small aligned crop, and
+        the names and groupings you made, all inside
+        <code>.photoindex/faces/</code>. Nothing is written outside <code>.photoindex/</code>.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn sec danger" id="btnPrivacyWipe">Delete all face data&hellip;</button>
+        <span class="hint" style="margin:0">Removes every vector, crop, group and name in one
+          step. Your photos, captions, dates and search index are untouched.</span>
+      </div>
+      <div id="privacyOut"></div>
+    </div>
     <div class="card">
       <h2>Backups</h2>
       <div class="row">
@@ -874,9 +909,11 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         config into <code>.photoindex/backups/</code>. Thumbnails are excluded on purpose:
         they are most of the index and can be rebuilt from the originals without any model
         calls, whereas every record cost ~21 seconds of scanning.</div>
-      <div id="backupOut"></div>
     </div>
-
+      </div>
+      <div id="settingsSec-diag" hidden>
+        <h2 style="margin:0 0 4px">Diagnostics</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">For when something is slow or wrong.</p>
     <div class="card">
       <h2>Diagnostics</h2>
       <div class="row">
@@ -886,10 +923,17 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         and derived data against a scratch folder, using mock model responses.</div>
       <div id="selfOut"></div>
     </div>
-
     <div class="card">
       <h2>Thinking-off probe</h2>
-      <div id="thinkOut"><span class="dim">Measures output tokens and seconds with thinking on vs off.</span></div>
+      <div class="row">
+        <button class="btn sec" id="btnThink">Probe thinking-off</button>
+        <span class="hint" style="margin:0">Measures output tokens and seconds with thinking on
+          against thinking off, on the model selected for scanning.</span>
+      </div>
+      <div id="thinkOut"></div>
+    </div>
+      </div>
+      </div>
     </div>
   </section>
 </main>

@@ -168,6 +168,7 @@ and each a dead end from the others.
 | lens (Explore only) | `library` (shown as **Grid**) `timeline` `people` `chat` | how the photos are arranged |
 | scope (Explore only) | `all` `favourites` `removed` | which photos |
 | section (Scan) | `photos` `faces` `maint` | which job |
+| section (Settings) | `conn` `lib` `scanning` `privacy` `diag` | what is being configured |
 
 A **lens** is a segmented control because four short labels fit one; a **section** is a left
 rail because three sections of ten controls do not, and because the rail has room for the
@@ -175,6 +176,18 @@ rail because three sections of ten controls do not, and because the rail has roo
 many records, when it last ran. Not knowing which index was open once cost a three-hour face
 pass written to the wrong disk, and every one of those facts was previously reachable only by
 scrolling Settings.
+
+**A control and the place it writes must be visible together.** Moving buttons between tabs is
+most of this redesign, and a button whose output host stays behind reports into a hidden
+section — the operation looks like it did nothing, which is how a 6,621-photo face pass once
+failed 1,565 of its first 1,575 showing only a rising count. Three controls did exactly that
+after the Scan split. The suite now reads each handler's output host **out of the page's own
+source** and checks that the button and the host share a pane, so the rule cannot drift from a
+hand-written table.
+
+**Face data has two doors.** `Delete all face data` is in Scan → Faces, where you are when a
+pass went wrong and you want to start again, and in Settings → Privacy & data, where you are
+when you are worried about what is stored. Both call one `faceWipeFlow()`.
 
 **Scanning faces lives in Scan → Faces; naming, merging and splitting live in Explore →
 People.** One is a job you start and wait for, the other is browsing. Grouping strictness stays
@@ -202,7 +215,7 @@ documentation and in saved chat history:
 | `#favourites` | the Grid lens with scope `favourites` — it carries its scope |
 | `#search` | the Grid lens, where the search field's results are shown |
 | `#timeline` `#people` `#chat` | the lens of that name |
-| `#scan` `#settings` | unchanged; `#scan/faces` and `#scan/maint` address a section, and the first section is just `#scan` |
+| `#scan` `#settings` | unchanged; `#scan/faces`, `#settings/privacy` and the rest address a section, and a tab's first section is just the tab |
 
 `tabFromHash()` remains as the "which view does this address name" helper the suite and older
 callers use, with `#favourites` still naming itself.

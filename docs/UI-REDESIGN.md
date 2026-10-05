@@ -270,7 +270,7 @@ Estimates assume the existing build system and the 738-assertion suite.
 | **R-2** | **Explore.** Fold Favourites into scope; wire Timeline and People as lenses; keep search results across lenses. | 1.5 |
 | **R-3** | **Built** (v0.6.26). Search unification (§5): `88-searchui.js` deleted, operators and the Filters panel added. | 1 |
 | **R-4** | **Built** (v0.6.28). Scan: three sections, the face passes moved over, the status rail built. | 1.5 |
-| **R-5** | **Settings.** Five sections, Privacy & data written properly. | 1.5 |
+| **R-5** | **Built** (v0.6.29). Settings: five sections, Privacy & data written properly. | 1.5 |
 | **R-6** | **Chat drawer.** Results populate the grid behind it. | 1 |
 | **R-7** | **⌘K palette.** Command registry, fuzzy filter, person names. | 1 |
 | **R-8** | **Visual pass** — the fork's tokens and type scale (roadmap MU-01), applied once across three tabs instead of eight. | 2 |

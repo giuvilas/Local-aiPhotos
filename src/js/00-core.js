@@ -1,6 +1,6 @@
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.28";
+const APP_VERSION = "0.6.29";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -209,8 +209,9 @@ const LENSES = ["library","timeline","people","chat"];
 const SCOPES = ["all","favourites","removed"];
 /* Sections inside a tab. Scan is three jobs, not one: describing photos,
    finding faces, and housekeeping. */
-const SECTIONS = { scan:["photos","faces","maint"] };
-const curSection = { scan:"photos" };
+const SECTIONS = { scan:["photos","faces","maint"],
+                   settings:["conn","lib","scanning","privacy","diag"] };
+const curSection = { scan:"photos", settings:"conn" };
 /* The lenses that arrange photos, and so can be scoped. */
 const SCOPED_LENSES = ["library","timeline"];
 function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
@@ -235,6 +236,7 @@ function showSection(tab, sec){
     if (n) n.hidden = s !== sec;
   }
   if (tab === "scan" && typeof renderScanStatus === "function") renderScanStatus();
+  if (tab === "settings" && typeof renderSettingsStatus === "function") renderSettingsStatus();
 }
 let curTab = "settings";      // the view
 let curTop = "settings";      // the top-level tab the view lives under
@@ -1109,7 +1111,12 @@ function syncRoles(){
   $("#sModels").textContent = S.roles.scan
     ? "scan: " + S.roles.scan + (loaded.length ? "   loaded: " + loaded.join(", ") : "") : "";
 }
-function setConn(kind, txt){ $("#dotConn").className = "dot " + kind; $("#sConn").textContent = txt; }
+function setConn(kind, txt){
+  $("#dotConn").className = "dot " + kind; $("#sConn").textContent = txt;
+  /* The Settings rail repeats this, and rendered before the connection landed:
+     the footer read "Connected" beside a rail reading "not connected". */
+  if (typeof renderSettingsStatus === "function") renderSettingsStatus();
+}
 
 /* Detect models without being asked. Nothing in the app can work until this has
    run once, so making the user press a button first was simply a trap. */

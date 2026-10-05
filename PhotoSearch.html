@@ -649,7 +649,8 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
               every scan, are in Settings.</span>
           </div>
           <div class="row" style="margin-top:12px">
-                <span class="hint" style="margin:0">Copies the index somewhere else and switches to
+            <button class="btn sec" id="btnIndexMove">Move the index&hellip;</button>
+            <span class="hint" style="margin:0">Copies the index somewhere else and switches to
               it, leaving the original where it is until you are satisfied.</span>
           </div>
         </div>
@@ -741,23 +742,34 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
   </section>
 
   <section id="tab-settings">
+    <div class="railwrap">
+      <nav class="rail" id="settingsRail" role="tablist" aria-label="Settings sections">
+        <h4>Settings</h4>
+        <button role="tab" data-sec="conn" aria-selected="true">Connection</button>
+        <button role="tab" data-sec="lib" aria-selected="false">Library</button>
+        <button role="tab" data-sec="scanning" aria-selected="false">Scanning</button>
+        <button role="tab" data-sec="privacy" aria-selected="false">Privacy &amp; data</button>
+        <button role="tab" data-sec="diag" aria-selected="false">Diagnostics</button>
+        <div class="status" id="settingsStatus"></div>
+      </nav>
+      <div class="railpane">
+      <div id="settingsSec-conn">
+        <h2 style="margin:0 0 4px">Connection</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">Any OpenAI-compatible local server — LM Studio, Ollama, llama.cpp. Nothing is sent anywhere else.</p>
     <div class="card">
       <h2>LM Studio connection</h2>
       <div class="row">
         <div style="flex:2 1 300px"><label for="baseUrl">Server URL</label>
           <input type="text" id="baseUrl" value="http://localhost:1234" spellcheck="false"></div>
         <button class="btn" id="btnTest">Test connection</button>
-        <button class="btn sec" id="btnThink">Probe thinking-off</button>
       </div>
       <div class="hint">Needs LM Studio's <b>Enable CORS</b>, or <code>lms server start --cors</code>.</div>
       <div id="diag"></div>
     </div>
-
     <div class="card">
       <h2>Models</h2>
       <div id="models"><span class="dim">Run "Test connection" to detect models.</span></div>
     </div>
-
     <div class="card">
       <h2>Model roles</h2>
       <div class="row">
@@ -767,7 +779,10 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
       </div>
       <div class="hint">Models load on demand. They are never all required at once.</div>
     </div>
-
+      </div>
+      <div id="settingsSec-lib" hidden>
+        <h2 style="margin:0 0 4px">Library</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">Where your photos are, and where the index that describes them is kept. The two are independent.</p>
     <div class="card">
       <h2>Photo folder &amp; index</h2>
       <div class="row">
@@ -788,7 +803,6 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           </select></div>
         <button class="btn" id="btnIndexDir">Choose where to save the DB…</button>
         <button class="btn sec" id="btnIndexReveal">What's in it?</button>
-        <button class="btn sec" id="btnIndexMove">Move the index&hellip;</button>
       </div>
       <div id="idxNow" class="idxNow"></div>
       <div id="idxPickNote" class="note" hidden></div>
@@ -822,7 +836,10 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         large library folder by folder without re-walking all of it.</div>
       <div id="fsOut"></div>
     </div>
-
+      </div>
+      <div id="settingsSec-scanning" hidden>
+        <h2 style="margin:0 0 4px">Scanning</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">How hard the machine works, and how dates and places are decided.</p>
     <div class="card">
       <h2>Scan settings</h2>
       <div class="row">
@@ -838,7 +855,6 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
       <div class="hint">File-stat concurrency matters most on a NAS: reading size and modified
         time is one round trip per file, so raise it for SMB shares.</div>
     </div>
-
     <div class="card">
       <h2>Dates, places and events</h2>
       <div class="row">
@@ -859,7 +875,26 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
           was taken. An override wins over every other source. Re-scan those files to apply it.</div>
       </div>
     </div>
-
+      </div>
+      <div id="settingsSec-privacy" hidden>
+        <h2 style="margin:0 0 4px">Privacy &amp; data</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">Everything stays on this machine. No photo, caption or face is uploaded, and no online service is contacted — not for geocoding, not for recognition.</p>
+    <div class="card">
+      <h2>Faces</h2>
+      <div class="hint" style="margin-top:0">Faces are grouped by <b>how alike they look</b>,
+        and nothing else. Age, gender, emotion and ethnicity are never inferred and never
+        stored &mdash; a test asserts those fields cannot reach the index. Names come from you;
+        no model ever supplies one.</div>
+      <div class="hint">What is kept: a numeric fingerprint per face, a small aligned crop, and
+        the names and groupings you made, all inside
+        <code>.photoindex/faces/</code>. Nothing is written outside <code>.photoindex/</code>.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn sec danger" id="btnPrivacyWipe">Delete all face data&hellip;</button>
+        <span class="hint" style="margin:0">Removes every vector, crop, group and name in one
+          step. Your photos, captions, dates and search index are untouched.</span>
+      </div>
+      <div id="privacyOut"></div>
+    </div>
     <div class="card">
       <h2>Backups</h2>
       <div class="row">
@@ -874,9 +909,11 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         config into <code>.photoindex/backups/</code>. Thumbnails are excluded on purpose:
         they are most of the index and can be rebuilt from the originals without any model
         calls, whereas every record cost ~21 seconds of scanning.</div>
-      <div id="backupOut"></div>
     </div>
-
+      </div>
+      <div id="settingsSec-diag" hidden>
+        <h2 style="margin:0 0 4px">Diagnostics</h2>
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">For when something is slow or wrong.</p>
     <div class="card">
       <h2>Diagnostics</h2>
       <div class="row">
@@ -886,10 +923,17 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
         and derived data against a scratch folder, using mock model responses.</div>
       <div id="selfOut"></div>
     </div>
-
     <div class="card">
       <h2>Thinking-off probe</h2>
-      <div id="thinkOut"><span class="dim">Measures output tokens and seconds with thinking on vs off.</span></div>
+      <div class="row">
+        <button class="btn sec" id="btnThink">Probe thinking-off</button>
+        <span class="hint" style="margin:0">Measures output tokens and seconds with thinking on
+          against thinking off, on the model selected for scanning.</span>
+      </div>
+      <div id="thinkOut"></div>
+    </div>
+      </div>
+      </div>
     </div>
   </section>
 </main>
@@ -952,7 +996,7 @@ body:has(#tab-library:not([hidden])) main{max-width:none;padding-left:6px;paddin
 /* ==================== 00-core.js ==================== */
 "use strict";
 /* Keep in step with the newest heading in ChangeLog.md. */
-const APP_VERSION = "0.6.28";
+const APP_VERSION = "0.6.29";
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const n = document.createElement(tag);
@@ -1161,8 +1205,9 @@ const LENSES = ["library","timeline","people","chat"];
 const SCOPES = ["all","favourites","removed"];
 /* Sections inside a tab. Scan is three jobs, not one: describing photos,
    finding faces, and housekeeping. */
-const SECTIONS = { scan:["photos","faces","maint"] };
-const curSection = { scan:"photos" };
+const SECTIONS = { scan:["photos","faces","maint"],
+                   settings:["conn","lib","scanning","privacy","diag"] };
+const curSection = { scan:"photos", settings:"conn" };
 /* The lenses that arrange photos, and so can be scoped. */
 const SCOPED_LENSES = ["library","timeline"];
 function topOf(view){ return LENSES.includes(view) ? "explore" : view; }
@@ -1187,6 +1232,7 @@ function showSection(tab, sec){
     if (n) n.hidden = s !== sec;
   }
   if (tab === "scan" && typeof renderScanStatus === "function") renderScanStatus();
+  if (tab === "settings" && typeof renderSettingsStatus === "function") renderSettingsStatus();
 }
 let curTab = "settings";      // the view
 let curTop = "settings";      // the top-level tab the view lives under
@@ -2061,7 +2107,12 @@ function syncRoles(){
   $("#sModels").textContent = S.roles.scan
     ? "scan: " + S.roles.scan + (loaded.length ? "   loaded: " + loaded.join(", ") : "") : "";
 }
-function setConn(kind, txt){ $("#dotConn").className = "dot " + kind; $("#sConn").textContent = txt; }
+function setConn(kind, txt){
+  $("#dotConn").className = "dot " + kind; $("#sConn").textContent = txt;
+  /* The Settings rail repeats this, and rendered before the connection landed:
+     the footer read "Connected" beside a rail reading "not connected". */
+  if (typeof renderSettingsStatus === "function") renderSettingsStatus();
+}
 
 /* Detect models without being asked. Nothing in the app can work until this has
    run once, so making the user press a button first was simply a trap. */
@@ -6236,6 +6287,29 @@ function renderScanStatus(){
     ? last.toLocaleDateString(undefined, { day:"numeric", month:"short" }) : "\u2013");
 }
 
+/* ---- the Settings rail's status ----
+   What the app is talking to, and what it is holding. The connection dot is in
+   the footer, but which models are loaded and how many faces are stored are the
+   two facts people come to Settings to check. */
+function renderSettingsStatus(){
+  const n = $("#settingsStatus");
+  if (!n) return;
+  n.textContent = "";
+  const row = (label, value, bad) => {
+    const d = el("div");
+    d.append(document.createTextNode(label + " "));
+    d.append(el("b", bad ? "bad" : null, value));
+    n.append(d);
+  };
+  row("Server", S.connected ? "connected" : "not connected", !S.connected);
+  const loaded = S.models.filter(m => m.state === "loaded").length;
+  row("Models", S.models.length ? loaded + " of " + S.models.length + " loaded" : "\u2013");
+  const named = FACES.people.filter(p => p.name).length;
+  row("Faces", FACES.loaded
+    ? FACES.faces.size.toLocaleString() + " in " + named + " named" : "\u2013");
+  row("Version", APP_VERSION);
+}
+
 /* ================= plan UI ================= */
 let planAbort = null;
 async function refreshPlan(){
@@ -6710,7 +6784,7 @@ $("#btnIndexMove").onclick = async () => {
     if (isPickerStuck(e)){ offerPickerReset(); return; }
     toast(humanError(e)); return;
   }
-  const host = $("#fsOut"); resetChecks(host);
+  const host = $("#maintOut"); resetChecks(host);
   let cur = null;
   try { cur = await indexParent(); } catch {}
   try { if (cur && await cur.isSameEntry(dest)){ toast("The index is already in " + dest.name + "."); return; } } catch {}
@@ -6780,7 +6854,7 @@ $("#sKeep").onchange = () => {
 };
 $("#btnBackup").onclick = async () => {
   if (RUN.active){ toast("A scan is running — back up when it finishes."); return; }
-  const host = $("#backupOut"); resetChecks(host);
+  const host = $("#maintOut"); resetChecks(host);
   host.scrollIntoView({ block:"nearest" });
   const btn = $("#btnBackup"); btn.disabled = true; btn.textContent = "Backing up…";
   try {
@@ -6816,11 +6890,11 @@ $("#btnBackup").onclick = async () => {
 $("#btnBackups").onclick = async () => {
   if (!(await ensureIndexConnected())) return;
   if (!(await ensureConnected("the backup list"))) return;
-  resetChecks($("#backupOut"));
+  resetChecks($("#maintOut"));
   await showBackups();
 };
 async function showBackups(){
-  const host = $("#backupOut");
+  const host = $("#maintOut");
   try {
     await ensureIndex();
     const list = await listBackups();
@@ -10092,7 +10166,11 @@ $("#btnRecluster").onclick = async () => {
   } catch (e){ st.err(humanError(e)); }
 };
 
-$("#btnFaceWipe").onclick = async () => {
+/* Two entrances, one door. The face tools are in Scan -> Faces, where you are
+   when a pass went wrong and you want to start again; the same control is in
+   Settings -> Privacy & data, where you are when you are worried about what is
+   stored. Neither is a detour to the other. */
+async function faceWipeFlow(){
   if (!confirm("Delete ALL face data?\n\nEvery face vector, group and name you "
     + "assigned is removed from .photoindex/faces/. Your photos, captions, dates "
     + "and search index are not touched.\n\nThis cannot be undone.")) return;
@@ -10104,7 +10182,9 @@ $("#btnFaceWipe").onclick = async () => {
     renderPeople();
     toast("Face data deleted.");
   } catch (e){ toast(humanError(e)); }
-};
+}
+$("#btnFaceWipe").onclick = faceWipeFlow;
+$("#btnPrivacyWipe").onclick = faceWipeFlow;
 
 let peopleLoading = false;
 async function onPeopleShown(){
@@ -13526,6 +13606,88 @@ async function selfTest(){
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
       eq("the old Search address lands on the grid, where its results are shown",
          tabFromHash("#search"), "library");
+      /* ---- a control and the place it writes must be visible together ----
+         Moving buttons between tabs is most of this redesign, and a button
+         whose output host stayed behind reports into a hidden section: the run
+         looks like it did nothing. Three did exactly that after the Scan split
+         -- Move the index, Back up now and Show backups all still wrote into
+         Settings, and Move the index had been left in Settings entirely.
+
+         The host is READ OUT OF THE CODE rather than listed here, so the check
+         cannot pass by agreeing with a stale table of its own. */
+      {
+        const src = (document.querySelector("script:not([src])") || {}).textContent || "";
+        const paneOf = id => {
+          const n = $("#" + id);
+          return n ? n.closest('[id^="scanSec-"], [id^="settingsSec-"], section') : null;
+        };
+        const hostIn = btn => {
+          const at = src.indexOf('$("#' + btn + '").onclick');
+          if (at < 0) return null;
+          const body = src.slice(at, at + 1600);
+          const m = /\$\("#([A-Za-z0-9_-]*(?:Out|diag))"\)/.exec(body);
+          return m ? m[1] : null;
+        };
+        const buttons = ["btnTest","btnThink","btnPick","btnWriteTest","btnIndexReveal",
+          "btnSelfTest","btnIndexMove","btnBackup","btnBackups","btnThumbs","btnCompact",
+          "btnFaceScan","btnRefine","btnReembed","btnCompare","btnRecluster"];
+        const checked = [], wrong = [];
+        for (const b of buttons){
+          const h = hostIn(b);
+          if (!h || !$("#" + h)) continue;          // writes nowhere of its own
+          checked.push(b);
+          const pb = paneOf(b), ph = paneOf(h);
+          if (!pb || !ph || pb !== ph) wrong.push(b + "\u2192" + h);
+        }
+        ok("the check found the controls to check", checked.length >= 12,
+           checked.length + " of " + buttons.length);
+        eq("every control writes somewhere it can be seen from", wrong.join(", "), "");
+      }
+
+      /* ---- RS-5: Settings is five groups, not one scroll ---- */
+      {
+        const wasSec = curSection.settings, wasT = curTab;
+        eq("Settings has five sections", SECTIONS.settings.join(","),
+           "conn,lib,scanning,privacy,diag");
+        showTab("settings", routeFromHash("#settings/privacy"));
+        ok("an address opens the section it names",
+           $("#settingsSec-privacy").hidden === false);
+        ok("and hides the others",
+           SECTIONS.settings.filter(x => x !== "privacy")
+             .every(x => $("#settingsSec-" + x).hidden === true));
+        eq("the first section is just the tab", hashFor("settings", "conn"), "settings");
+        eq("the rest have their own address", hashFor("settings", "diag"), "settings/diag");
+
+        /* Face data is the most sensitive thing stored, and "where do I delete
+           this" is asked by someone worried, not someone mid-task. It must be
+           findable from Settings as well as from the face tools. */
+        ok("deleting face data is reachable from Privacy & data",
+           $("#settingsSec-privacy").contains($("#btnPrivacyWipe")));
+        ok("and still from the face tools", $("#tab-scan").contains($("#btnFaceWipe")));
+        ok("both are the same door",
+           $("#btnFaceWipe").onclick === $("#btnPrivacyWipe").onclick);
+
+        /* Each group holds what its name promises. */
+        const holds = (sec, id) => $("#settingsSec-" + sec).contains($("#" + id));
+        ok("Connection holds the server and the model roles",
+           holds("conn", "baseUrl") && holds("conn", "mScan"));
+        ok("Library holds the folder and the index location",
+           holds("lib", "btnPick") && holds("lib", "sIndexMode"));
+        ok("Scanning holds the scan and date settings",
+           holds("scanning", "sConc") && holds("scanning", "sHemi"));
+        ok("Privacy holds the backup preferences", holds("privacy", "sBackup"));
+        ok("Diagnostics holds the self-test and the probe",
+           holds("diag", "btnSelfTest") && holds("diag", "btnThink"));
+
+        showSection("settings", "conn");
+        renderSettingsStatus();
+        const st = $("#settingsStatus").textContent;
+        for (const label of ["Server", "Models", "Faces", "Version"])
+          ok("the rail says " + label.toLowerCase(), st.includes(label), st);
+
+        showSection("settings", wasSec); showTab(wasT);
+      }
+
       /* ---- RS-4: Scan is three jobs, not one ---- */
       {
         const wasSec = curSection.scan, wasT = curTab;

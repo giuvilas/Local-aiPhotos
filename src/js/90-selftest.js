@@ -2489,6 +2489,88 @@ async function selfTest(){
       eq("percent-encoding is decoded", tabFromHash("#%63hat"), "chat");
       eq("the old Search address lands on the grid, where its results are shown",
          tabFromHash("#search"), "library");
+      /* ---- a control and the place it writes must be visible together ----
+         Moving buttons between tabs is most of this redesign, and a button
+         whose output host stayed behind reports into a hidden section: the run
+         looks like it did nothing. Three did exactly that after the Scan split
+         -- Move the index, Back up now and Show backups all still wrote into
+         Settings, and Move the index had been left in Settings entirely.
+
+         The host is READ OUT OF THE CODE rather than listed here, so the check
+         cannot pass by agreeing with a stale table of its own. */
+      {
+        const src = (document.querySelector("script:not([src])") || {}).textContent || "";
+        const paneOf = id => {
+          const n = $("#" + id);
+          return n ? n.closest('[id^="scanSec-"], [id^="settingsSec-"], section') : null;
+        };
+        const hostIn = btn => {
+          const at = src.indexOf('$("#' + btn + '").onclick');
+          if (at < 0) return null;
+          const body = src.slice(at, at + 1600);
+          const m = /\$\("#([A-Za-z0-9_-]*(?:Out|diag))"\)/.exec(body);
+          return m ? m[1] : null;
+        };
+        const buttons = ["btnTest","btnThink","btnPick","btnWriteTest","btnIndexReveal",
+          "btnSelfTest","btnIndexMove","btnBackup","btnBackups","btnThumbs","btnCompact",
+          "btnFaceScan","btnRefine","btnReembed","btnCompare","btnRecluster"];
+        const checked = [], wrong = [];
+        for (const b of buttons){
+          const h = hostIn(b);
+          if (!h || !$("#" + h)) continue;          // writes nowhere of its own
+          checked.push(b);
+          const pb = paneOf(b), ph = paneOf(h);
+          if (!pb || !ph || pb !== ph) wrong.push(b + "\u2192" + h);
+        }
+        ok("the check found the controls to check", checked.length >= 12,
+           checked.length + " of " + buttons.length);
+        eq("every control writes somewhere it can be seen from", wrong.join(", "), "");
+      }
+
+      /* ---- RS-5: Settings is five groups, not one scroll ---- */
+      {
+        const wasSec = curSection.settings, wasT = curTab;
+        eq("Settings has five sections", SECTIONS.settings.join(","),
+           "conn,lib,scanning,privacy,diag");
+        showTab("settings", routeFromHash("#settings/privacy"));
+        ok("an address opens the section it names",
+           $("#settingsSec-privacy").hidden === false);
+        ok("and hides the others",
+           SECTIONS.settings.filter(x => x !== "privacy")
+             .every(x => $("#settingsSec-" + x).hidden === true));
+        eq("the first section is just the tab", hashFor("settings", "conn"), "settings");
+        eq("the rest have their own address", hashFor("settings", "diag"), "settings/diag");
+
+        /* Face data is the most sensitive thing stored, and "where do I delete
+           this" is asked by someone worried, not someone mid-task. It must be
+           findable from Settings as well as from the face tools. */
+        ok("deleting face data is reachable from Privacy & data",
+           $("#settingsSec-privacy").contains($("#btnPrivacyWipe")));
+        ok("and still from the face tools", $("#tab-scan").contains($("#btnFaceWipe")));
+        ok("both are the same door",
+           $("#btnFaceWipe").onclick === $("#btnPrivacyWipe").onclick);
+
+        /* Each group holds what its name promises. */
+        const holds = (sec, id) => $("#settingsSec-" + sec).contains($("#" + id));
+        ok("Connection holds the server and the model roles",
+           holds("conn", "baseUrl") && holds("conn", "mScan"));
+        ok("Library holds the folder and the index location",
+           holds("lib", "btnPick") && holds("lib", "sIndexMode"));
+        ok("Scanning holds the scan and date settings",
+           holds("scanning", "sConc") && holds("scanning", "sHemi"));
+        ok("Privacy holds the backup preferences", holds("privacy", "sBackup"));
+        ok("Diagnostics holds the self-test and the probe",
+           holds("diag", "btnSelfTest") && holds("diag", "btnThink"));
+
+        showSection("settings", "conn");
+        renderSettingsStatus();
+        const st = $("#settingsStatus").textContent;
+        for (const label of ["Server", "Models", "Faces", "Version"])
+          ok("the rail says " + label.toLowerCase(), st.includes(label), st);
+
+        showSection("settings", wasSec); showTab(wasT);
+      }
+
       /* ---- RS-4: Scan is three jobs, not one ---- */
       {
         const wasSec = curSection.scan, wasT = curTab;

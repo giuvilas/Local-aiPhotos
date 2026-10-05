@@ -521,7 +521,11 @@ $("#btnRecluster").onclick = async () => {
   } catch (e){ st.err(humanError(e)); }
 };
 
-$("#btnFaceWipe").onclick = async () => {
+/* Two entrances, one door. The face tools are in Scan -> Faces, where you are
+   when a pass went wrong and you want to start again; the same control is in
+   Settings -> Privacy & data, where you are when you are worried about what is
+   stored. Neither is a detour to the other. */
+async function faceWipeFlow(){
   if (!confirm("Delete ALL face data?\n\nEvery face vector, group and name you "
     + "assigned is removed from .photoindex/faces/. Your photos, captions, dates "
     + "and search index are not touched.\n\nThis cannot be undone.")) return;
@@ -533,7 +537,9 @@ $("#btnFaceWipe").onclick = async () => {
     renderPeople();
     toast("Face data deleted.");
   } catch (e){ toast(humanError(e)); }
-};
+}
+$("#btnFaceWipe").onclick = faceWipeFlow;
+$("#btnPrivacyWipe").onclick = faceWipeFlow;
 
 let peopleLoading = false;
 async function onPeopleShown(){

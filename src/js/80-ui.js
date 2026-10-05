@@ -427,6 +427,29 @@ function renderScanStatus(){
     ? last.toLocaleDateString(undefined, { day:"numeric", month:"short" }) : "\u2013");
 }
 
+/* ---- the Settings rail's status ----
+   What the app is talking to, and what it is holding. The connection dot is in
+   the footer, but which models are loaded and how many faces are stored are the
+   two facts people come to Settings to check. */
+function renderSettingsStatus(){
+  const n = $("#settingsStatus");
+  if (!n) return;
+  n.textContent = "";
+  const row = (label, value, bad) => {
+    const d = el("div");
+    d.append(document.createTextNode(label + " "));
+    d.append(el("b", bad ? "bad" : null, value));
+    n.append(d);
+  };
+  row("Server", S.connected ? "connected" : "not connected", !S.connected);
+  const loaded = S.models.filter(m => m.state === "loaded").length;
+  row("Models", S.models.length ? loaded + " of " + S.models.length + " loaded" : "\u2013");
+  const named = FACES.people.filter(p => p.name).length;
+  row("Faces", FACES.loaded
+    ? FACES.faces.size.toLocaleString() + " in " + named + " named" : "\u2013");
+  row("Version", APP_VERSION);
+}
+
 /* ================= plan UI ================= */
 let planAbort = null;
 async function refreshPlan(){
@@ -901,7 +924,7 @@ $("#btnIndexMove").onclick = async () => {
     if (isPickerStuck(e)){ offerPickerReset(); return; }
     toast(humanError(e)); return;
   }
-  const host = $("#fsOut"); resetChecks(host);
+  const host = $("#maintOut"); resetChecks(host);
   let cur = null;
   try { cur = await indexParent(); } catch {}
   try { if (cur && await cur.isSameEntry(dest)){ toast("The index is already in " + dest.name + "."); return; } } catch {}
@@ -971,7 +994,7 @@ $("#sKeep").onchange = () => {
 };
 $("#btnBackup").onclick = async () => {
   if (RUN.active){ toast("A scan is running — back up when it finishes."); return; }
-  const host = $("#backupOut"); resetChecks(host);
+  const host = $("#maintOut"); resetChecks(host);
   host.scrollIntoView({ block:"nearest" });
   const btn = $("#btnBackup"); btn.disabled = true; btn.textContent = "Backing up…";
   try {
@@ -1007,11 +1030,11 @@ $("#btnBackup").onclick = async () => {
 $("#btnBackups").onclick = async () => {
   if (!(await ensureIndexConnected())) return;
   if (!(await ensureConnected("the backup list"))) return;
-  resetChecks($("#backupOut"));
+  resetChecks($("#maintOut"));
   await showBackups();
 };
 async function showBackups(){
-  const host = $("#backupOut");
+  const host = $("#maintOut");
   try {
     await ensureIndex();
     const list = await listBackups();

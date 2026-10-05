@@ -408,7 +408,7 @@ wanting it by date means starting again.
 | RS-2 | **Built** (v0.6.25). Explore: one record list behind every lens, so scope and search reach the Timeline; selection and scroll position survive a lens switch | 1.5 |
 | RS-3 | **Built** (v0.6.26). Search unification — the Search tab is gone; its dates, place, toggles and real exclusion live in the one field | 1 |
 | RS-4 | **Built** (v0.6.28). Scan: Photos · Faces · Maintenance behind a rail that also carries the status — which index, which folder, how many records, when it last ran | 1.5 |
-| RS-5 | Settings: Connection · Library · Scanning · Privacy & data · Diagnostics | 1.5 |
+| RS-5 | **Built** (v0.6.29). Settings: Connection · Library · Scanning · Privacy & data · Diagnostics, behind the same rail | 1.5 |
 | RS-6 | Chat drawer; its answers populate the grid behind it | 1 |
 | RS-7 | ⌘K command palette | 1 |
 | RS-8 | Visual pass — **this is MU-01**, applied once across three tabs instead of eight | 2 |
